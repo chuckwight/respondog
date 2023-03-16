@@ -40,7 +40,7 @@ public class Question implements Serializable, Cloneable {
 			String type;
 			int nChoices=0;
 			List<String> choices = new ArrayList<String>();
-			double requiredPrecision=0;
+			double requiredPrecision=1;
 			int significantFigures = 0;
 			String correctAnswer;
 			String tag;
@@ -54,6 +54,7 @@ public class Question implements Serializable, Cloneable {
 			String notes;
 			String learn_more_url;
 			boolean scrambleChoices;
+			boolean strictSpelling;
 			// Note: the parameters array formerly had the attribute @Transient javax.persistence.Transient
 	@Ignore		int[] parameters = {0,0,0,0};
 	@Index		boolean isActive = false;
@@ -714,11 +715,13 @@ public class Question implements Serializable, Cloneable {
 						+ quot2html(amp2html(correctAnswer)) + "\"'/><br/>");
 				buf.append("<TEXTAREA name=QuestionTag rows=5 cols=60 wrap=soft>" 
 						+ amp2html(tag) + "</TEXTAREA><br/>");
+				buf.append("Scoring ignores upper/lower case and punctuation.<br/>"
+						+ "<label><input type=checkbox name=StrictSpelling value='" + strictSpelling + "' />Enforce strict spelling (otherwise slightly lenient)</label><br/><br/>");
 				break;
 			case 5: // Numeric Answer
 				buf.append("Question Text:<br/><TEXTAREA name=QuestionText rows=5 cols=60 wrap=soft>" 
 						+ amp2html(text) + "</TEXTAREA><br/>");
-				buf.append("<FONT SIZE=-2>Significant figures: <input size=5 name=SignificantFigures value='" + significantFigures + "'/> Required precision: <input size=5 name=RequiredPrecision value='" + requiredPrecision + "'/> (set to zero to require exact answer)</FONT><br/>");
+				//buf.append("<FONT SIZE=-2>Significant figures: <input size=5 name=SignificantFigures value='" + significantFigures + "'/> Required precision: <input size=5 name=RequiredPrecision value='" + requiredPrecision + "'/> (set to zero to require exact answer)</FONT><br/>");
 				switch (getNumericItemType()) {
 				case 0: buf.append("<span style='color:#EE0000;font-size: small;'>Enter the exact value. <a href=# onclick=\"alert('Your answer must have exactly the correct value. You may use scientific E notation. Example: enter 3.56E-12 to represent the number 3.56\u00D710\u207B\u00B9\u00B2');return false;\">&#9432;</a></span><br/>"); break;
 				case 1: buf.append("<span style='color:#EE0000;font-size: small;'>Enter the value with the appropriate number of significant figures. <a href=# onclick=\"alert('Use the information in the problem to determine the correct number of sig figs in your answer. You may use scientific E notation. Example: enter 3.56E-12 to represent the number 3.56\u00D710\u207B\u00B9\u00B2');return false;\">&#9432;</a></span><br/>"); break;
@@ -731,6 +734,11 @@ public class Question implements Serializable, Cloneable {
 				buf.append("<INPUT TYPE=TEXT NAME=CorrectAnswer VALUE='" + correctAnswer + "'/> ");
 				buf.append(" Units:<INPUT TYPE=TEXT NAME=QuestionTag SIZE=8 VALUE='" 
 						+ quot2html(amp2html(tag)) + "'/><br/>");
+				// include selectors for exact, precision, sig figs
+				buf.append("Scoring:<br/>"
+						+ "<label>Answer must agree with correct answer to within <input size=5 name=RequiredPrecision value='" + requiredPrecision + "'/>% (set to 0 to require exact answer).</label><br/>"
+						+ "<label>Answer must have <input type=text size=5 name=SignificantFigures value='" + (significantFigures==0?"":significantFigures) + "'/> significant figures (leave blank to accept any).</label><br/>");
+				/*
 				buf.append("Parameters:<input name=ParameterString value='" 
 						+ parameterString + "'/><FONT SIZE=-2><a href=# onClick=\"javascript:document.getElementById('detail1').innerHTML="
 						+ "'You may embed up to 4 parameters (a b c d) in a question using a parameter string like<br/>"
@@ -741,8 +749,8 @@ public class Question implements Serializable, Cloneable {
 						+ "Correct answer: #22.9898*a/1000*b/10# g<p></p>"
 						+ "You can also display fractions in vertical format using encoding like (|numerator|denominator|)<br/><br/>'\";>What's This?</a></FONT>");
 				buf.append("<div id=detail1></div>");
-				buf.append("Hint:<br/><TEXTAREA NAME=Hint ROWS=3 COLS=60 WRAP=SOFT>"
-						+ amp2html(hint) + "</TEXTAREA><br/>");
+				*/
+				//buf.append("Hint:<br/><TEXTAREA NAME=Hint ROWS=3 COLS=60 WRAP=SOFT>" + amp2html(hint) + "</TEXTAREA><br/>");
 				buf.append("Solution:<br/><TEXTAREA NAME=Solution ROWS=10 COLS=60 WRAP=SOFT>" 
 						+ amp2html(solution) + "</TEXTAREA><br/>");
 				break;
@@ -773,7 +781,7 @@ public class Question implements Serializable, Cloneable {
 			for (int i=0;i<correctAnswers.length;i++) {
 				correctAnswers[i] = correctAnswers[i].replaceAll("\\W","");
 				if (compare.equals(studentAnswer,correctAnswers[i])) return true;
-				else if (closeEnough(studentAnswer.toLowerCase(),correctAnswers[i].toLowerCase())) return true;
+				else if (!strictSpelling && closeEnough(studentAnswer.toLowerCase(),correctAnswers[i].toLowerCase())) return true;
 			}
 			return false;
 		case 5: // Numeric Answer

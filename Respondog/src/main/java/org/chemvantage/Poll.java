@@ -812,6 +812,7 @@ public class Poll extends HttpServlet {
 		int i=0;
 		buf.append("<div style='display:table'>");
 		for (Question q : authoredQuestions) {
+			if (a.questionKeys.contains(Key.create(q))) continue; // don't allow duplicate questions in a Poll
 			i++;
 			q.setParameters(a.id % Integer.MAX_VALUE);
 			buf.append("<div style='display: table-row'>");
@@ -957,7 +958,7 @@ public class Poll extends HttpServlet {
 			buf.append(q.edit());
 			
 			buf.append("<INPUT TYPE=SUBMIT NAME=UserRequest VALUE=Preview />");
-			buf.append("</FORM>");
+			buf.append("</FORM><br/>");
 		} catch (Exception e) {
 			buf.append(e.toString());
 		}
@@ -1065,7 +1066,7 @@ public class Poll extends HttpServlet {
 			}
 			choice++;
 		}
-		double requiredPrecision = 0.; // percent
+		double requiredPrecision = 1.; // percent
 		int significantFigures = 0;
 		boolean scrambleChoices = false;
 		int pointValue = 1;
@@ -1110,6 +1111,7 @@ public class Poll extends HttpServlet {
 		q.solution = request.getParameter("Solution");
 		q.notes = "";
 		q.scrambleChoices = scrambleChoices;
+		q.strictSpelling = Boolean.parseBoolean(request.getParameter("StrictSpelling"));
 		q.authorId = request.getParameter("AuthorId");
 		q.editorId = request.getParameter("EditorId");
 		q.validateFields();
