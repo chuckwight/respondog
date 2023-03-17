@@ -34,15 +34,15 @@ import com.googlecode.objectify.annotation.Index;
 public class Assignment implements java.lang.Cloneable {
 	@Id 	Long id;
 	@Index	public String domain;
-	@Index	String assignmentType;
+	@Index	String assignmentType = "Poll";
 	@Index	String resourceLinkId;
 	@Index 	Date created;
 	@Index	public 	String lti_ags_lineitems_url;
 	@Index	public	String lti_ags_lineitem_url;
 	@Index	Date valid;
 			String lti_nrps_context_memberships_url;
-			String title;
-			boolean pollIsClosed=false;
+			String title = "Class Poll";
+			boolean pollIsClosed=true;
 			Date pollClosesAt = null;
 			List<Key<Question>> questionKeys = new ArrayList<Key<Question>>();
 

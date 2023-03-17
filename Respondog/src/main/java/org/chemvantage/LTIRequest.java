@@ -92,13 +92,14 @@ public class LTIRequest extends HttpServlet {
 				break;
 			case "LtiResourceLinkRequest":
 				Assignment a = getMyAssignment(user,claims,d,request);
+				if (a==null) throw new Exception("Assignnent is null");
 				user.setAssignment(a.id);
 				out.println(Subject.header() + (user.isInstructor()?Poll.instructorPage(user,a,request):Poll.showPollQuestions(user,a)) + Subject.footer);
 				break;
 			default: throw new Exception("The LTI message_type claim " + message_type.getAsString() + " is not supported.");
 			}						
 		} catch (Exception e) {
-			response.sendError(401, e.getMessage()==null?e.toString():e.getMessage());
+			response.sendError(401, "ResponDog Launch Failed: " + e.getMessage()==null?e.toString():e.getMessage());
 		}
 
 	}
@@ -134,17 +135,17 @@ public class LTIRequest extends HttpServlet {
 			JsonElement userId_claim = claims.get("sub");
 			if (userId_claim == null) throw new Exception("The id_token was missing required subject claim");
 			
-			String deployment_id = claims.get("https://purl.imsglobal.org/spec/lti/claim/deployment_id").getAsString();
+			JsonElement deployment_id = claims.get("https://purl.imsglobal.org/spec/lti/claim/deployment_id");
 			if (deployment_id == null) throw new Exception("The deployment_id claim was not found in the id_token payload.");
-			String platformDeploymentId = platform_id + "/" + deployment_id;
+			String platformDeploymentId = platform_id + "/" + deployment_id.getAsString();
 
 			Deployment d = Deployment.getInstance(platformDeploymentId);
 
 			if (d==null) throw new Exception("The deployment was not found in the ResponDog database. You "
-					+ "can register your LMS with ChemVantage at https://www.chemvantage.org/lti/registration");
+					+ "can register your LMS with us at https://respondog.com/registration");
 			if (d.expires != null && d.expires.before(new Date())) d.status = "blocked";
 			if ("blocked".equals(d.status)) throw new Exception("Sorry, we were unable to launch ResponDog from this "
-					+ "account. Please contact admin@chemvantage.org for assistance to reactivate the account. Thank you.");
+					+ "account. Please contact admin@respondog.com for assistance to reactivate the account. Thank you.");
 			if (d.status == null) d.status = "pending";
 
 			// validate the id_token audience:
@@ -159,46 +160,55 @@ public class LTIRequest extends HttpServlet {
 			}
 			throw new Exception("The id_token client_id claim is not authorized in ChemVantage.");
 		} catch (Exception e) {
-			throw new Exception("ID token could not be validated: " + e.getMessage()==null?e.toString():e.getMessage() + "<br/>" + claims.toString());
+			throw new Exception("ID token could not be validated: " + e.getMessage()==null?e.toString():e.getMessage());
 		}
 	}
 	
 	private static void validateTokenSignature(String id_token,String url) throws Exception {
 		// validate the id_token signature:
-		// retrieve the public Java Web Key from the platform to verify the signature
-		if (url==null) throw new Exception("The deployment does not have a valid JWKS URL.");
-		URL jwks_url = new URL(url);
-		JwkProvider provider = new UrlJwkProvider(jwks_url);
-		DecodedJWT decoded_token = JWT.decode(id_token);
-		String key_id = decoded_token.getKeyId();
-		if (key_id == null || key_id.isEmpty()) throw new Exception("No JWK id found.");
-		Jwk jwk = provider.get(key_id); //throws Exception when not found or can't get one
-		RSAPublicKey public_key = (RSAPublicKey)jwk.getPublicKey();
-		// verify the JWT signature
-		Algorithm algorithm = Algorithm.RSA256(public_key,null);
-		if (!"RS256".contentEquals(decoded_token.getAlgorithm())) throw new Exception("JWT algorithm must be RS256");
-		JWT.require(algorithm).build().verify(decoded_token);  // throws JWTVerificationException if not valid
+		try {
+			// retrieve the public Java Web Key from the platform to verify the signature
+			if (url==null) throw new Exception("The deployment does not have a valid JWKS URL.");
+			URL jwks_url = new URL(url);
+			JwkProvider provider = new UrlJwkProvider(jwks_url);
+			DecodedJWT decoded_token = JWT.decode(id_token);
+			String key_id = decoded_token.getKeyId();
+			if (key_id == null || key_id.isEmpty()) throw new Exception("No JWK id found.");
+			Jwk jwk = provider.get(key_id); //throws Exception when not found or can't get one
+			RSAPublicKey public_key = (RSAPublicKey)jwk.getPublicKey();
+			// verify the JWT signature
+			Algorithm algorithm = Algorithm.RSA256(public_key,null);
+			if (!"RS256".contentEquals(decoded_token.getAlgorithm())) throw new Exception("JWT algorithm must be RS256");
+			JWT.require(algorithm).build().verify(decoded_token);  // throws JWTVerificationException if not valid
+		} catch (Exception e) {
+			throw new Exception("Failed to validate id_token signature: " + e.getMessage()==null?e.toString():e.getMessage());
+		}
 	}
 
 	private static User validateUserClaims(JsonObject claims) throws Exception {
 		// Process User information:
 		try {
-		String userId = claims.get("sub")==null?"":claims.get("sub").getAsString();  // allows for anonymous user ""
-		User user = new User(claims.get("iss").getAsString(), userId);;
-		
-		JsonElement roles_claim = claims.get("https://purl.imsglobal.org/spec/lti/claim/roles");
-		if (roles_claim == null || !roles_claim.isJsonArray()) throw new Exception("Required roles claim is missing from the id_token");
-		JsonArray roles = roles_claim.getAsJsonArray();
-		Iterator<JsonElement> roles_iterator = roles.iterator();
-		while(roles_iterator.hasNext()){
-			String role = roles_iterator.next().getAsString().toLowerCase();
-			user.setIsTeachingAssistant(role.contains("teachingassistant"));
-			user.setIsInstructor(role.contains("instructor"));
-			user.setIsAdministrator(role.contains("administrator"));
-		}
-		return user;
+			String userId = null;
+			try {
+				userId = claims.get("sub").getAsString();
+			} catch (Exception e) {
+				userId = "";  // allows for anonymous user
+			}
+			User user = new User(claims.get("iss").getAsString(), userId);
+
+			JsonElement roles_claim = claims.get("https://purl.imsglobal.org/spec/lti/claim/roles");
+			if (roles_claim == null || !roles_claim.isJsonArray()) throw new Exception("Required roles claim is missing from the id_token");
+			JsonArray roles = roles_claim.getAsJsonArray();
+			Iterator<JsonElement> roles_iterator = roles.iterator();
+			while(roles_iterator.hasNext()){
+				String role = roles_iterator.next().getAsString().toLowerCase();
+				user.setIsTeachingAssistant(role.contains("teachingassistant"));
+				user.setIsInstructor(role.contains("instructor"));
+				user.setIsAdministrator(role.contains("administrator"));
+			}
+			return user;
 		} catch (Exception e) {
-			throw new Exception("User claims could not be validated: " + e.getMessage());
+			throw new Exception("User claims could not be validated: " + e.getMessage()==null?e.toString():e.getMessage());
 		}
 	}
 	
@@ -221,10 +231,9 @@ public class LTIRequest extends HttpServlet {
 			Assignment a = new Assignment(assignmentType,d.platform_deployment_id);
 				
 			ofy().save().entity(a).now();
-				
-			String serverUrl = "https://" + iss;
-			String launchUrl = serverUrl;
-			String iconUrl = serverUrl + "/images/respondog.png";
+			
+			String launchUrl = iss;
+			String iconUrl = iss.lastIndexOf("/")==iss.length()?iss+"images/respondog.png":"/images/respondog.com";
 			String client_id = d.client_id;
 			String subject = claims.get("sub").getAsString();
 			String nonce = Nonce.generateNonce();
@@ -323,93 +332,109 @@ public class LTIRequest extends HttpServlet {
 	}
 	
 	private static Assignment getMyAssignment(User user,JsonObject claims,Deployment d,HttpServletRequest request) throws Exception {
-		Assignment myAssignment = null;
-		
-		// Process information for LTI Assignment and Grade Services (AGS)
-		String scope = "";
-		String lti_ags_lineitem_url = null;
-		String lti_ags_lineitems_url = null;
-		try {  
-			JsonObject lti_ags_claims = claims.get("https://purl.imsglobal.org/spec/lti-ags/claim/endpoint").getAsJsonObject();
+		try {
+			Assignment myAssignment = null;
 
-			// get the list of AGS capabilities allowed by the platform
-			JsonArray scope_claims = lti_ags_claims.get("scope")==null?new JsonArray():lti_ags_claims.get("scope").getAsJsonArray();
-			Iterator<JsonElement> scopes_iterator = scope_claims.iterator();
-			while (scopes_iterator.hasNext()) scope += scopes_iterator.next().getAsString() + (scopes_iterator.hasNext()?" ":"");
-			lti_ags_lineitems_url = (lti_ags_claims.get("lineitems")==null?null:lti_ags_claims.get("lineitems").getAsString());
-			lti_ags_lineitem_url = (lti_ags_claims.get("lineitem")==null?null:lti_ags_claims.get("lineitem").getAsString());
-		} catch (Exception e) {				
-		}
+			// Process information for LTI Assignment and Grade Services (AGS)
+			String scope = "";
+			String lti_ags_lineitem_url = null;
+			String lti_ags_lineitems_url = null;
+			try {  
+				JsonObject lti_ags_claims = claims.get("https://purl.imsglobal.org/spec/lti-ags/claim/endpoint").getAsJsonObject();
 
-		// Process information for LTI Advantage Names and Roles Provisioning (NRPS)
-		String lti_nrps_context_memberships_url = null;
-		try { 
-			JsonObject lti_nrps_claims = claims.get("https://purl.imsglobal.org/spec/lti-nrps/claim/namesroleservice").getAsJsonObject();
-			if (lti_nrps_claims != null) scope += (scope.length()>0?" ":"") + "https://purl.imsglobal.org/spec/lti-nrps/scope/contextmembership.readonly";
-			lti_nrps_context_memberships_url = lti_nrps_claims.get("context_memberships_url").getAsString();
-		} catch (Exception e) {
-		}
+				// get the list of AGS capabilities allowed by the platform
+				JsonArray scope_claims = lti_ags_claims.get("scope")==null?new JsonArray():lti_ags_claims.get("scope").getAsJsonArray();
+				Iterator<JsonElement> scopes_iterator = scope_claims.iterator();
+				while (scopes_iterator.hasNext()) scope += scopes_iterator.next().getAsString() + (scopes_iterator.hasNext()?" ":"");
+				lti_ags_lineitems_url = (lti_ags_claims.get("lineitems")==null?null:lti_ags_claims.get("lineitems").getAsString());
+				lti_ags_lineitem_url = (lti_ags_claims.get("lineitem")==null?null:lti_ags_claims.get("lineitem").getAsString());
+			} catch (Exception e) {				
+			}
 
-		String resourceLinkId = claims.get("https://purl.imsglobal.org/spec/lti/claim/resource_link").getAsJsonObject().get("id").getAsString();
-		String resourceId = null;  // this is a String representation of the assignmentId that is set during the DeepLinking flow
-		JsonObject lineitem = null;
+			// Process information for LTI Advantage Names and Roles Provisioning (NRPS)
+			String lti_nrps_context_memberships_url = null;
+			try { 
+				JsonObject lti_nrps_claims = claims.get("https://purl.imsglobal.org/spec/lti-nrps/claim/namesroleservice").getAsJsonObject();
+				if (lti_nrps_claims != null) scope += (scope.length()>0?" ":"") + "https://purl.imsglobal.org/spec/lti-nrps/scope/contextmembership.readonly";
+				lti_nrps_context_memberships_url = lti_nrps_claims.get("context_memberships_url").getAsString();
+			} catch (Exception e) {
+			}
 
-		if (lti_ags_lineitem_url != null) {  // this is the default, most common way of retrieving the Assignment
-			myAssignment = ofy().load().type(Assignment.class).filter("lti_ags_lineitem_url",lti_ags_lineitem_url).first().now();
-		}
-		
-		if (myAssignment==null) {  // this may be the first launch of a deeplinking item; check for the resourceId in custom parameters, launch parameters or lineitem
+			String resourceId = null;  // this is a String representation of the assignmentId that is set during the DeepLinking flow
+			JsonObject lineitem = null;  // this is the platform's full description of a grade book column for the assignment
+			String resourceLinkId = null;  // this is a required element that identifies a unique resource link in the platform
+
 			try {
-				JsonObject custom = claims.get("https://purl.imsglobal.org/spec/lti/claim/custom").getAsJsonObject();
-				resourceId = custom.get("resourceId")==null?custom.get("resourceid").getAsString():custom.get("resourceId").getAsString();  // schoology changes "resopurceId" to lowercase 
-			} catch (Exception e2) {
-				switch (d.lms_type) {
-				case "canvas": // older canvas assignments may have this in the launch URL query
-					resourceId = request.getParameter("resourceId");
-					break;
-				default:  // all other lms platforms may have this in the lineitem from DeepLinking
-					if (lineitem==null) lineitem = LTIMessage.getLineItem(d, lti_ags_lineitem_url);
-					resourceId = lineitem.get("resourceId").getAsString();					
+				resourceLinkId = claims.get("https://purl.imsglobal.org/spec/lti/claim/resource_link").getAsJsonObject().get("id").getAsString();
+			} catch (Exception e) {
+				throw new Exception("Missing or badly formed resource link ID");
+			}	
+
+			if (lti_ags_lineitem_url != null) {  // this is the default, most common way of retrieving the Assignment
+				myAssignment = ofy().load().type(Assignment.class).filter("lti_ags_lineitem_url",lti_ags_lineitem_url).first().now();
+			}
+
+			if (myAssignment==null) {  // this may be the first launch of a deeplinking item; check for the resourceId in custom parameters, launch parameters or lineitem
+				try {
+					JsonObject custom = claims.get("https://purl.imsglobal.org/spec/lti/claim/custom").getAsJsonObject();
+					resourceId = custom.get("resourceId")==null?custom.get("resourceid").getAsString():custom.get("resourceId").getAsString();  // schoology changes "resopurceId" to lowercase 
+				} catch (Exception e2) {}
+				
+				if (resourceId != null) {  // try to get the lineitem from the platform					
+					try {
+						switch (d.lms_type) {
+						case "canvas": // older canvas assignments may have this in the launch URL query
+							resourceId = request.getParameter("resourceId");
+							break;
+						default:  // all other lms platforms may have this in the lineitem from DeepLinking
+							if (lineitem==null) lineitem = LTIMessage.getLineItem(d, lti_ags_lineitem_url);
+							resourceId = lineitem.get("resourceId").getAsString();					
+						}
+					} catch (Exception e) {}					
+				}
+				
+				if (resourceId != null) {  // found an ancestor Assignment but could be parent, grandparent, etc
+					try {
+						myAssignment = ofy().load().type(Assignment.class).id(Long.parseLong(resourceId)).safe();
+						if (myAssignment.lti_ags_lineitem_url != null) {  // current launch is for a copy (descendant) assignment
+							myAssignment.id = ofy().factory().allocateId(Assignment.class).getId();  // forces a new copy Assignment entity to be saved
+							myAssignment.created = new Date();  // with a new created Date
+						}
+					} catch (Exception e) {}
 				}
 			}
-			if (resourceId != null) {  // found an ancestor Assignment but could be parent, grandparent, etc
-				try {
-					myAssignment = ofy().load().type(Assignment.class).id(Long.parseLong(resourceId)).safe();
-					if (myAssignment.lti_ags_lineitem_url != null) {  // current launch is for a copy (descendant) assignment
-						myAssignment.id = ofy().factory().allocateId(Assignment.class).getId();  // forces a new copy Assignment entity to be saved
-						myAssignment.created = new Date();  // with a new created Date
-					}
-				} catch (Exception e) {}
-			}
-		}
-		
-		if (myAssignment == null) {  // retrieve the assignment by its resourceLinkId value - this will be the case for ungraded assignments
-			myAssignment = ofy().load().type(Assignment.class).filter("domain",d.platform_deployment_id).filter("resourceLinkId",resourceLinkId).first().now();
-		}
 
-		// After all that, if the assignment still cannot be found, create a new (incomplete) one. This will be updated after the ResourcePicker
-		if (myAssignment == null) {
-			myAssignment = new Assignment(d.platform_deployment_id,resourceLinkId,lti_nrps_context_memberships_url);
-		}
-		
-		// Update the Assignment parameters:
-		try {
-			Assignment original_a = myAssignment.clone(); // make a copy to compare with for updating later
-			myAssignment.resourceLinkId = resourceLinkId;		
-			if (lti_ags_lineitems_url != null) myAssignment.lti_ags_lineitems_url = lti_ags_lineitems_url;
-			if (lti_ags_lineitem_url != null) myAssignment.lti_ags_lineitem_url = lti_ags_lineitem_url;
-			if (lti_nrps_context_memberships_url != null) myAssignment.lti_nrps_context_memberships_url = lti_nrps_context_memberships_url;
-			myAssignment.valid = new Date();
-
-			// If required, save the updated Assignment entity now so its id will be accessible
-			if (myAssignment.id==null || !myAssignment.equivalentTo(original_a)) {
-				ofy().save().entity(myAssignment).now();
+			if (myAssignment == null) {  // retrieve the assignment by its resourceLinkId value - this will be the case for ungraded assignments
+				myAssignment = ofy().load().type(Assignment.class).filter("domain",d.platform_deployment_id).filter("resourceLinkId",resourceLinkId).first().now();
 			}
+
+			// After all that, if the assignment still cannot be found, create a new (incomplete) one. This will be updated after the ResourcePicker
+			if (myAssignment == null) {
+				myAssignment = new Assignment(d.platform_deployment_id,resourceLinkId,lti_nrps_context_memberships_url);
+			}
+
+			// Update the Assignment parameters:
+			try {
+				Assignment original_a = myAssignment.clone(); // make a copy to compare with for updating later
+				myAssignment.resourceLinkId = resourceLinkId;		
+				if (lti_ags_lineitems_url != null) myAssignment.lti_ags_lineitems_url = lti_ags_lineitems_url;
+				if (lti_ags_lineitem_url != null) myAssignment.lti_ags_lineitem_url = lti_ags_lineitem_url;
+				if (lti_nrps_context_memberships_url != null) myAssignment.lti_nrps_context_memberships_url = lti_nrps_context_memberships_url;
+				myAssignment.valid = new Date();
+
+				// If required, save the updated Assignment entity now so its id will be accessible
+				if (myAssignment.id==null || !myAssignment.equivalentTo(original_a)) {
+					ofy().save().entity(myAssignment).now();
+				}
+			} catch (Exception e) {
+				throw new Exception("Assignment could not be updated during LTI launch sequence. " + e.getMessage()==null?e.toString():e.getMessage());
+			}
+
+			return myAssignment;
 		} catch (Exception e) {
-			throw new Exception("Assignment could not be updated during LTI launch sequence. " + e.getMessage());
+			throw new Exception("Failed to get assignment: " + e.getMessage()==null?e.toString():e.getMessage());
 		}
-
-		return myAssignment;
 	}
+
 	
 }

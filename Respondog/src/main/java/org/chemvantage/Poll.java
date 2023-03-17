@@ -287,64 +287,67 @@ public class Poll extends HttpServlet {
 		return buf.toString();
 	}
 	
-	static String showPollQuestions(User user, Assignment a) {
+	static String showPollQuestions(User user, Assignment a) throws Exception {
 		/*
 		 * This method is reached by Learners or Instructors who launch the correct LTI Resource Link in the LMS, thereby binding
 		 * the assignmentId to their User entity.
 		 */
-		
-		if (a.pollIsClosed) return waitForPoll(user);  // nobody gets in without the instructor opening the poll first
-		
-		StringBuffer buf = new StringBuffer();
-		
-		buf.append("<h2>Class Poll</h2>");
-		buf.append("<div id='timer0' style='color: #EE0000'></div><br/>");
-		
-		if (user.isInstructor()) {
-			buf.append("<b>Please tell your students that the poll is now open so they can view the poll questions.</b><br/>");
-			
-			if (a.pollClosesAt!=null) buf.append("The poll will close automatically when the timer reaches zero.<br/>");
-			
-			buf.append("<form method=post action='/Poll' >"
-					+ "<a href=/Poll?sig=" + user.getTokenSignature() + ">Return to the instructor page</a>, or "
-					+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
-					+ "<input type=hidden name=UserRequest value='Close the Poll' />"
-					+ "<input type=submit value='Close the Poll' />"
-					+ "</form>");
-		}
-		
-		buf.append("<OL>");
-		int possibleScore = 0;
-		buf.append("<form id=pollForm method=post action='/Poll' onSubmit='return confirmSubmission(" + a.questionKeys.size() + ")'>"
-				+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />");
-		
-		// see if this user already has a submission for this assignment; else get a new PollTransaction
-		PollTransaction pt = getPollTransaction(user,a);
-		Map<Key<Question>,Question> pollQuestions = ofy().load().keys(a.questionKeys);
-		
-		for (Key<Question> k : a.questionKeys) {  // main loop to present questions
-			Question q = pollQuestions.get(k); // this should nearly always work
-			if (q==null) continue;		 // but skip the question if it has been deleted
-			q.setParameters(a.id % Integer.MAX_VALUE);
-			String studentResponse = pt.responses.get(k);
-			if (studentResponse==null) studentResponse = "";
-			buf.append("<li>" + q.print(null,studentResponse) + "<br/></li>");
-			possibleScore += q.correctAnswer==null || q.correctAnswer.isEmpty()?0:q.pointValue;
-		}
-		buf.append("</OL>");
-		
-		buf.append("<div id='timer1' style='color: #EE0000'></div><br/>");
-		buf.append(timer(user));
-		buf.append(confirmSubmission(user)); 
+		try {
+			if (a.pollIsClosed) return waitForPoll(user);  // nobody gets in without the instructor opening the poll first
 
-		buf.append("<input type=hidden name=PossibleScore value='" + possibleScore + "' />");
-		buf.append("<input type=hidden name=UserRequest value='SubmitResponses' />");
-		buf.append("<input type=submit id=pollSubmit value='Submit My Responses Now' />");
-		buf.append("</form><br/><br/>");
-		
-		if (a.pollClosesAt != null) buf.append("<script>startTimer(" + (a.pollClosesAt.getTime()-(user.isInstructor()?0L:3000L)) + ");</script>");
-		
-		return buf.toString();
+			StringBuffer buf = new StringBuffer();
+
+			buf.append("<h2>Class Poll</h2>");
+			buf.append("<div id='timer0' style='color: #EE0000'></div><br/>");
+
+			if (user.isInstructor()) {
+				buf.append("<b>Please tell your students that the poll is now open so they can view the poll questions.</b><br/>");
+
+				if (a.pollClosesAt!=null) buf.append("The poll will close automatically when the timer reaches zero.<br/>");
+
+				buf.append("<form method=post action='/Poll' >"
+						+ "<a href=/Poll?sig=" + user.getTokenSignature() + ">Return to the instructor page</a>, or "
+						+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
+						+ "<input type=hidden name=UserRequest value='Close the Poll' />"
+						+ "<input type=submit value='Close the Poll' />"
+						+ "</form>");
+			}
+
+			buf.append("<OL>");
+			int possibleScore = 0;
+			buf.append("<form id=pollForm method=post action='/Poll' onSubmit='return confirmSubmission(" + a.questionKeys.size() + ")'>"
+					+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />");
+
+			// see if this user already has a submission for this assignment; else get a new PollTransaction
+			PollTransaction pt = getPollTransaction(user,a);
+			Map<Key<Question>,Question> pollQuestions = ofy().load().keys(a.questionKeys);
+
+			for (Key<Question> k : a.questionKeys) {  // main loop to present questions
+				Question q = pollQuestions.get(k); // this should nearly always work
+				if (q==null) continue;		 // but skip the question if it has been deleted
+				q.setParameters(a.id % Integer.MAX_VALUE);
+				String studentResponse = pt.responses.get(k);
+				if (studentResponse==null) studentResponse = "";
+				buf.append("<li>" + q.print(null,studentResponse) + "<br/></li>");
+				possibleScore += q.correctAnswer==null || q.correctAnswer.isEmpty()?0:q.pointValue;
+			}
+			buf.append("</OL>");
+
+			buf.append("<div id='timer1' style='color: #EE0000'></div><br/>");
+			buf.append(timer(user));
+			buf.append(confirmSubmission(user)); 
+
+			buf.append("<input type=hidden name=PossibleScore value='" + possibleScore + "' />");
+			buf.append("<input type=hidden name=UserRequest value='SubmitResponses' />");
+			buf.append("<input type=submit id=pollSubmit value='Submit My Responses Now' />");
+			buf.append("</form><br/><br/>");
+
+			if (a.pollClosesAt != null) buf.append("<script>startTimer(" + (a.pollClosesAt.getTime()-(user.isInstructor()?0L:3000L)) + ");</script>");
+
+			return buf.toString();
+		} catch (Exception e) {
+			throw new Exception("Poll.showPollQuestions failed:" + e.getMessage()==null?e.toString():e.getMessage());
+		}
 	}
 	
 	private static String confirmSubmission(User u) {
