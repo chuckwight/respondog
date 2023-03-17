@@ -1,38 +1,32 @@
 <!DOCTYPE html>
-<html lang="en">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=UTF-8" />
+    <meta name='Description' content='ResponDog is an LTI polling app for engaging audiences.' />
+	<meta name='Keywords' content='open,education,poll' />
+	<title>ResponDog</title>
+  </head>
 
-<head>
-<meta http-equiv='Content-type' content='text/html;charset=iso-8859-1' />
-<meta name='Description' content='The ResponDog polling app helps you to engage your audience.' />
-<meta name='Keywords' content='open,education,resource,OER,poll,student,engagement' />
-<link rel='icon' type='image/png' href='/images/favicon.png' />
-<title>ResponDog</title>
-<style>
- body     {background-color: white; font-family: Calibri,Arial,sans-serif; max-width: 1000px}
-</style>
-</head>
+  <body style='font-family: Calibri,Arial,sans-serif;'>
+    <div style='padding:15px;'>
+    <a href='/' style='text-decoration: none;'>
+    <img src=/images/respondog.png height=75px width=75px alt='ResponDog Logo' />
+    <span style='color: brown; font-size: 2.5em; font-weight: bold;'>ResponDog</span><br/></a>
+    The pup-ular choice for audience engagement!
+    </div>
+ 
+	<main>
+	<div style='padding-left:15px'>
+	<h3>LMS Admins: How to Install ResponDog with your LMS</h3>
+	ResponDog is certified to comply with 1EdTech specifications for LTI Advantage Complete (version 1.3) including Dynamic Registration.
+	<br/><br/>
+	
+	<b>Does your LMS support LTI Dynamic Registration?</b>
 
-<body>
-
-<div class='top'>
-<a href="/" style='text-decoration: none;'>
-<span style='color: brown; font-size: 2em; font-weight: bold;'>ResponDog</span><br/>
-</a>
-An Open Education Resource for General Chemistry
-</div>
-
-<main>
-<h2>How to Install ResponDog</h2>
-ResponDog is certified to comply with 1EdTech specifications for LTI Advantage Complete (version 1.3). Due to potential security vulnerabilities, 
-we no longer support LTI version 1.1 registrations. Unfortunately, the registration process is highly dependent on which LMS you are using. To get 
-started, please follow the instruction below.
-
-<h3>Does your LMS support LTI Dynamic Registration?</h3>
-
-<ul>
-  <li><b>IF YES:</b> the LMS administrator should go to the LTI registration page in your LMS and use the Dynamic Registration URL: https://respondog.com/registration<br/>
-      They will submit a brief form, activate the ResponDog app, and configure which organizational units in your institution can access it. That's all!<br/><br/></li>
-  <li><b>IF NO:</b> please select your LMS from the following options for detailed installation instructions<br/>
+	<ul>
+ 	 <li><b>IF YES:</b> the LMS administrator should go to the LTI registration page in your LMS and use the Dynamic Registration URL: https://respondog.com/registration<br/>
+      Complete a brief form, activate the ResponDog app, and configure which organizational units in your institution can access it. That's all!<br/><br/></li>
+	  <li><b>IF NO:</b> please select your LMS from the following options for detailed installation instructions<br/>
       <button onclick="document.getElementById('instructions').innerHTML=document.getElementById('blackboard').innerHTML;">blackboard</button>
       <button onclick="document.getElementById('instructions').innerHTML=document.getElementById('brightspace').innerHTML;">brightspace</button>
       <button onclick="document.getElementById('instructions').innerHTML=document.getElementById('canvas').innerHTML;">canvas</button>
@@ -40,10 +34,11 @@ started, please follow the instruction below.
       <button onclick="document.getElementById('instructions').innerHTML=document.getElementById('sakai').innerHTML;">sakai</button>
       <button onclick="document.getElementById('instructions').innerHTML=document.getElementById('schoology').innerHTML;">schoology</button>
       <button onclick="document.getElementById('instructions').innerHTML=document.getElementById('other').innerHTML;">other</button>
-  </li>
-</ul>
-
-<div id='instructions'></div>  <!-- This is where the LMS-specific instructions are displayed -->
+	  </li>
+	</ul>
+	</div>
+	
+<div id='instructions' style='padding-left:15px'></div>  <!-- This is where the LMS-specific instructions are displayed -->
 
 <!-- Each section below contains instructions that are copied to the 'instructions' div above using the buttons -->
 
@@ -133,10 +128,11 @@ started, please follow the instruction below.
   The course instructor can then create any ResponDog assignment as follows:
   <ol>
     <li>Create a new Canvas assignment with the following recommended parameters:</li>
-    <li>Name: (as appropriate, e.g. Quiz - Heat and Enthalpy)</li>
-    <li>Points: 10 for quiz or homework; 5 for video, poll or reading assignment; 100 for placement exam or practice exam</li>
+    <li>Name: (as appropriate, e.g. Class Poll - War of 1812)</li>
+    <li>Points: 5, or as many questions as your poll will have</li>
     <li>Submission Type: External Tool</li>
     <li>External Tool URL: Find ResponDog or enter https://respondog.com</li>
+    <li>Click continue from the ResponDog popup window, then click the red 'Select' button in Canvas</li>
     <li>Save or Save and Publish</li>
     <li>When you launch the assignment, you may use the links on the Instructor page to customize it for your class.</li>
   </ol>
@@ -175,9 +171,9 @@ started, please follow the instruction below.
   <ol>
     <li>In any course, turn Edit Mode on and click 'Add an activity or resource'</li>
     <li>Select External tool</li>
-    <li>Activity Name: (as appropriate, e.g. Quiz - Heat and Enthalpy)</li>
+    <li>Activity Name: (as appropriate, e.g. Class Poll - War of 1812)</li>
     <li>Preconfigured Tool: select ResponDog</li>
-    <li>Click 'Select Content' and choose the assignment type and topics from the ResponDog popup window</li>
+    <li>Click 'Select Content' and then click 'Continue' from the ResponDog popup window</li>
     <li>Configure Grade and Privacy settings as desired</li>
     <li>When you launch the assignment, you may use the links on the Instructor page to customize it for your class.</li>
   </ol>
@@ -222,7 +218,7 @@ started, please follow the instruction below.
  The course instructor can then create any ResponDog assignment as follows:
   <ol>
     <li>In any course, click 'Add Materials' and select ResponDog</li>
-    <li>Choose the assignment type and topics from the ResponDog popup window</li>
+    <li>Click 'Continue' in the ResponDog popup window</li>
     <li>Use the Schoology assignment settings to edit the Grading Configuration and points</li>
     <li>When you launch the assignment, you may use the links on the ResponDog Instructor page to customize it for your class.</li>
   </ol>
@@ -248,19 +244,21 @@ started, please follow the instruction below.
   </ol>
 </div>
 
-<br/><br/>
+<div style='padding:15px'>
 If you have any difficulty with these instructions, please send email to admin@respondog.com so we can help you!<br/>
 <br/>
 Chuck Wight<br/>
 ResponDog LLC<br/>
-<br/><br/>
+</div>
 
 </main>
-<footer><hr/><img style='padding-left: 15px; vertical-align: middle;width:30px' src=images/CVLogo.png alt='ResponDog logo' />&nbsp;
-<a href=/index.html style='text-decoration: none;'><span style='color: blue;font-weight: bold;'>Chem</span><span style='color: #EE0000;font-weight: bold;'>Vantage</span></a> | 
-<a href=/about.html#terms>Terms and Conditions of Use</a> | 
-<a href=/about.html#privacy>Privacy Policy</a> | 
-<a href=/about.html#copyright>Copyright</a></footer>
+<div style='padding:15px'>
+<footer><hr style='width:300px;margin:0px'/><p></p>
+<a href=/welcome.html style='text-decoration: none;'><span style='color: brown;font-weight: bold;'>respondog.com</span></a> | 
+<a href=/about.html#terms>Terms and Conditions</a> | 
+<a href=/about.html#privacy>Privacy Policy</a>
+</footer>
+</div>
 
 </body>
 </html>

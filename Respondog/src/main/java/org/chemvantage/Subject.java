@@ -178,8 +178,8 @@ public class Subject {
 			+ "<a href=/about.html#terms>Terms and Conditions</a> "
 			+ "</footer></body>\n</html>";
 
-	public static String banner = "<div style='padding=30px; font-family: Calibri,Arial,sans-serif;'>"
-			+ "<a href='/' style='text-decoration: none;'>"
+	public static String banner = "<div style='padding=15px; font-family: Calibri,Arial,sans-serif;'>"
+			+ "<a href='/welcome.html' style='text-decoration: none;'>"
 			+ "<img src=/images/respondog.png height=40px width=40px alt='ResponDog Logo' />"
 			+ "	<span style='color: brown; font-size: 2em; font-weight: bold;'>ResponDog</span><br/></a>"
 			+ "	The pup-ular choice for audience engagement!<br/>"

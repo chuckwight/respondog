@@ -34,7 +34,7 @@
 <script type='text/javascript' src='https://www.google.com/recaptcha/api.js'> </script>
 </head>
 
-<body style='background-color: white; font-family: Calibri,Arial,sans-serif; padding: 30px; max-width: 800px' >
+<body style='background-color: white; font-family: Calibri,Arial,sans-serif; padding: 15px; max-width: 800px' >
 
 <%= Subject.banner %><br/>
 
@@ -43,7 +43,7 @@
 <% } %>
 
 <main><h1 style="display:none">ResponDog Registration</h1>
-<h3>ResponDog LTI Advantage <%= dynamic?"Dynamic":"" %> Registration</h3>
+<h3>LTI Advantage <%= dynamic?"Dynamic":"" %> Registration</h3>
 
 <form id=regform method=post action='/registration'>
 
@@ -67,7 +67,6 @@ Please tell us about your school, business or organization:<br/>
 
 <% if (!dynamic) { %>
 
-
 <fieldset style='width:400px'><legend>Type of Learning Management System:<br/></legend>
 <label><input type=radio name=lms value=blackboard <%= ((lms!=null && lms.equals("blackboard"))?"checked":"") %> />Blackboard</label><br/>
 <label><input type=radio name=lms value=brightspace <%= ((lms!=null && lms.equals("brightspace"))?"checked":"") %> />Brightspace</label><br/>
@@ -83,8 +82,12 @@ Please tell us about your school, business or organization:<br/>
  <input type=hidden name=openid_configuration value='<%= openid_configuration %>' />
 <% } %>
 
-Pricing: The ResponDog LTI app is completely free for non-commercial educational use at public and private schools and universities.<br/><br/>
-
+Pricing:
+  <ol>
+	<li>ResponDog is completely free for educational use at nonprofit schools and universities.</li>
+	<li>Commercial and personal accounts are $19/month for each instructor/presenter after a 30-day free trial period.</li>
+	<li>Poll participants are always free.</li>
+  </ol>
 
 <label><input type=checkbox name=AcceptResponDogTOS value=true <%= ((AcceptResponDogTOS!=null && AcceptResponDogTOS.equals("true"))?"checked":"") %>/>Accept the <a href=/about.html#terms target=_blank aria-label='opens new tab'>ResponDog Terms of Service</a></label><br/><br/>
 
@@ -96,11 +99,11 @@ Pricing: The ResponDog LTI app is completely free for non-commercial educational
 </form><br/><br/>
 
 </main>
-<footer><hr/><img style='padding-left: 15px; vertical-align: middle;width:30px' src=images/respondog.png alt='ResponDog logo' />&nbsp;
-<a href=/index.html style='text-decoration: none;'><span style='color: brown;font-weight: bold;'>ResponDog</span></a> | 
-<a href=/about.html#terms>Terms and Conditions of Use</a> | 
-<a href=/about.html#privacy>Privacy Policy</a> | 
-<a href=/about.html#copyright>Copyright</a></footer>
-
+<footer><hr style='width:300px;margin:0px'/><br/>
+	<a href=/welcome.html style='text-decoration: none;'><span style='color: brown;font-weight: bold;'>respondog.com</span></a> | 
+	<a href=/about.html#terms>Terms and Conditions</a> |
+	<a href=/about.html#privacy>Privacy Policy</a>
+</footer>
+	
 </body>
 </html>
