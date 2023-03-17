@@ -101,12 +101,14 @@ public class LTIRegistration extends HttpServlet {
 			if (userRequest==null) userRequest = "";
 
 			String iss = "https://" + request.getServerName();
-			
 			if (request.getParameter("token")!=null) {
 				response.setContentType("text/html");
 				String token = request.getParameter("token");
 				JWT.require(algorithm).withIssuer(iss).build().verify(token);
 				out.println(Subject.header("LTI Registration") + clientIdForm(token) + Subject.footer);
+			} else if ("config".contentEquals(userRequest)) {
+				response.setContentType("application/json");
+				out.println(getConfigurationJson(iss,request.getParameter("lms")));
 			} else {
 				String queryString = request.getQueryString();
 				String registrationURL = "/Registration.jsp" + (queryString==null?"":"?" + queryString);
@@ -476,6 +478,7 @@ public class LTIRegistration extends HttpServlet {
 		} catch (Exception e) { 
 			return "Domain was not valid."; 
 		}
+		if (lms==null) lms = "canvas";
 		
 		JsonObject config = new JsonObject();
 		config.addProperty("title","ResponDog" + (iss.contains("dev")?" Development":""));
