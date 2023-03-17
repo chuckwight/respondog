@@ -362,10 +362,10 @@ public class LTIRegistration extends HttpServlet {
 			
 			switch (lms) {
 			case "blackboard":
-				client_id = (iss.equals("https://dev-vantage-hrd.appspot.com")?"ec076e8c-b90f-4ecf-9b5d-a9eff03976be":"be1004de-6f8e-45b9-aae4-2c1370c24e1e");
+				client_id = "9eecfa9e-559c-4c4e-819f-fc1440c687e4";
 				platform_id = "https://blackboard.com";
 				oidc_auth_url = "https://developer.blackboard.com/api/v1/gateway/oidcauth";
-				well_known_jwks_url = "https://developer.blackboard.com/api/v1/management/applications/" + client_id + "/jwks.json";
+				well_known_jwks_url = "https://developer.blackboard.com/.well-known/jwks.json";
 				oauth_access_token_url = "https://developer.blackboard.com/api/v1/gateway/oauth2/jwttoken";
 				break;
 			case "schoology":
