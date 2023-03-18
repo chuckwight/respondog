@@ -124,23 +124,24 @@ public class LTIRegistration extends HttpServlet {
 	throws ServletException, IOException {
 		response.setContentType("text/html");
 		PrintWriter out = response.getWriter();
-		StringBuffer debug = new StringBuffer();
+		StringBuffer debug = new StringBuffer("Debug: ");
 		
 		String userRequest = request.getParameter("UserRequest");
 		if (userRequest==null) userRequest = "";
 
 		String iss = "https://" + request.getServerName();
 		boolean dynamicRegistration = request.getParameter("openid_configuration")!=null;
-		
+		debug.append(dynamicRegistration?"dynamic":"manual");
 		try {
 			if ("finalize".contentEquals(userRequest)) {				
 				String token = request.getParameter("Token");
 				JWT.require(algorithm).withIssuer(iss).build().verify(token);
 				out.println(Subject.header("ResponDog LTI Registration") + Subject.banner + createDeployment(request) + Subject.footer);			
 			} else {
+				debug.append(" start.");
 				if (request.getParameter("email")==null) throw new Exception("Email was not given.");
 				String token = validateApplicationFormContents(request);
-				debug.append("Debug:0<br/>");
+				debug.append("0<br/>");
 				if (dynamicRegistration) {
 					debug.append("Token:<br/>"+token+"<br/>");
 					JsonObject openIdConfiguration = getOpenIdConfiguration(request);  // LTIDRSv1p0 section 3.4
@@ -160,7 +161,7 @@ public class LTIRegistration extends HttpServlet {
 				}
 			}
 		} catch (Exception e) {
-			String message = (e.getMessage()==null?e.toString():e.getMessage());
+			String message = (e.getMessage()==null?e.toString():e.getMessage() + debug.toString());
 			String registrationURL = "/Registration.jsp?message=" + URLEncoder.encode(message,"utf-8");
 			Enumeration<String> enumeration = request.getParameterNames();
 			while(enumeration.hasMoreElements()){
@@ -176,7 +177,7 @@ public class LTIRegistration extends HttpServlet {
 						+ "URL: " + request.getParameter("url") + "<br/>"
 						+ "LMS: " + request.getParameter("lms") + "<br/>"
 						+ debug.toString();
-				if (dynamicRegistration) sendEmail("ResponDog Administrator","admin@respondog.com","Dynamic Registration Error",message);
+				if (dynamicRegistration) sendEmail("ResponDog Administrator","chuck.wight@gmail.com","Dynamic Registration Error",message);
 			} catch (Exception e1) {
 				e1.printStackTrace();
 			}
@@ -185,6 +186,7 @@ public class LTIRegistration extends HttpServlet {
 	}
 		
 	String validateApplicationFormContents(HttpServletRequest request) throws Exception {
+		try {
 		String sub = request.getParameter("sub");
 		String email = request.getParameter("email");
 		String aud = request.getParameter("aud");
@@ -217,7 +219,7 @@ public class LTIRegistration extends HttpServlet {
 
 		if (!reCaptchaOK(request)) throw new Exception("ReCaptcha tool was unverified. Please try again. ");
 		
-		String iss = request.getServerName().contains("dev-vantage")?"https://dev-vantage-hrd.appspot.com":"https://respondog.appspot.com";
+		String iss = request.getServerName().contains("dev-respondog")?"https://dev-respondog.appspot.com":"https://respondog.com";
 		
 		// Construct a new registration token
 		Date now = new Date();
@@ -234,6 +236,9 @@ public class LTIRegistration extends HttpServlet {
 				.sign(algorithm);
 		
 		return token;
+		} catch (Exception e) {
+			throw new Exception("Application Form Error: " + e.getMessage()==null?e.toString():e.getMessage());
+		}
 	}
 		
 	boolean reCaptchaOK(HttpServletRequest request) throws Exception {
@@ -278,7 +283,7 @@ public class LTIRegistration extends HttpServlet {
 		
 		buf.append("Thank you for your ResponDog registration request.<p>");
 		
-		if (iss.contains("dev-vantage-hrd.appspot.com")) {
+		if (iss.contains("dev-respondog.appspot.com")) {
 			buf.append("ResponDog is pleased to provide free access to our software development server for testing LTI connections. "
 					+ "Please note that the server is sometimes in an unstable state, and accounts may be reset or even deleted at any time. ");
 		} else {
@@ -320,7 +325,7 @@ public class LTIRegistration extends HttpServlet {
 
 	protected static void sendEmail(String recipientName, String recipientEmail, String subject, String messageBody) throws Exception {
 		Message msg = new MimeMessage(Session.getDefaultInstance(new Properties()));
-		InternetAddress from = new InternetAddress("chuck.wight@gmail.com", "ResponDog");
+		InternetAddress from = new InternetAddress("admin@respondog.com", "ResponDog");
 		msg.setFrom(from);
 		msg.addRecipient(Message.RecipientType.TO,new InternetAddress(recipientEmail,recipientName));
 		msg.addRecipient(Message.RecipientType.CC,from);
@@ -371,16 +376,16 @@ public class LTIRegistration extends HttpServlet {
 				oauth_access_token_url = "https://developer.blackboard.com/api/v1/gateway/oauth2/jwttoken";
 				break;
 			case "schoology":
-				client_id = (iss.equals("https://www.chemvantage.org")?"6558245496":"");
+				//client_id = (iss.equals("https://www.chemvantage.org")?"6558245496":"");
 				platform_id = "https://schoology.schoology.com";
 				oidc_auth_url = "https://lti-service.svc.schoology.com/lti-service/authorize-redirect";
 				well_known_jwks_url = "https://lti-service.svc.schoology.com/lti-service/.well-known/jwks";
 				oauth_access_token_url = "https://lti-service.svc.schoology.com/lti-service/access-token";
 				
 				buf.append("The Schoology admin can get the Deployment ID value for ResponDog by clicking the "
-						+ "Apps icon > App Center > " + (iss.equals("https://www.chemvantage.org")?"Organization Apps. ":"My Developer Apps. ") 
+						+ "Apps icon > App Center > " + (iss.equals("https://respondog.com")?"Organization Apps. ":"My Developer Apps. ") 
 						+ "Find ResponDog and select Configure. The Deployment ID should be two large (~10-digit) numbers separated by a hyphen. "
-						+ (iss.equals("https://dev-vantage-hrd.appspot.com")?"The Client ID value is the first 10-digit number in the Deployment ID.":"") 
+						+ (iss.equals("https://dev-respondog.appspot.com")?"The Client ID value is the first 10-digit number in the Deployment ID.":"") 
 						+ "<p>");
 				break;
 			case "canvas":
@@ -589,15 +594,18 @@ public class LTIRegistration extends HttpServlet {
 		String domain = null;
 		switch (project_id) {
 		case "respondog":
-			iss = "https://respondog.appspot.com";
-			domain = "respondog.appspot.com";
+			iss = "https://respondog.com";
+			domain = "respondog.com";
 			break;
+		case "dev-respondog":
+			iss = "https://dev-respondog.appspot.com";
+			domain = "dev-respondog.appspot.com";
 		}
 		JsonArray redirectUris = new JsonArray();
 		redirectUris.add(iss);
 		regJson.add("redirect_uris", redirectUris);
 		regJson.addProperty("initiate_login_uri", iss + "/auth/token");
-		regJson.addProperty("client_name", "ResponDog" + (iss.contains("dev-vantage")?" Development":""));
+		regJson.addProperty("client_name", "ResponDog" + (iss.contains("dev-respondog")?" Development":""));
 		regJson.addProperty("jwks_uri", iss + "/jwks");
 		regJson.addProperty("logo_uri", iss + "/images/respondog.png");
 		regJson.addProperty("token_endpoint_auth_method", "private_key_jwt");
@@ -625,7 +633,7 @@ public class LTIRegistration extends HttpServlet {
 		JsonObject deepLinking = new JsonObject();
 		deepLinking.addProperty("type",  "LtiDeepLinkingRequest");
 		deepLinking.addProperty("target_link_uri", iss);
-		deepLinking.addProperty("label", "ResponDog" + (iss.contains("dev-vantage")?" Development":""));
+		deepLinking.addProperty("label", "ResponDog" + (iss.contains("dev-respondog.appspot.com")?" Development":""));
 		debug.append("c");
 		try {
 			JsonArray messagesSupported = openIdConfiguration.get("https://purl.imsglobal.org/spec/lti-platform-configuration").getAsJsonObject().get("messages_supported").getAsJsonArray();
@@ -645,7 +653,7 @@ public class LTIRegistration extends HttpServlet {
 		JsonObject resourceLaunch = new JsonObject();
 		resourceLaunch.addProperty("type",  "LtiResourceLinkRequest");
 		resourceLaunch.addProperty("target_link_uri", iss);
-		resourceLaunch.addProperty("label", "ResponDog" + (iss.contains("dev-vantage")?" Development":""));
+		resourceLaunch.addProperty("label", "ResponDog" + (iss.contains("dev-respondog.appspot.com")?" Development":""));
 		debug.append("e");
 		try {
 			JsonArray messagesSupported = openIdConfiguration.get("https://purl.imsglobal.org/spec/lti-platform-configuration").getAsJsonObject().get("messages_supported").getAsJsonArray();
@@ -680,7 +688,7 @@ public class LTIRegistration extends HttpServlet {
 		try {
 			switch (openIdConfiguration.get("https://purl.imsglobal.org/spec/lti-platform-configuration").getAsJsonObject().get("product_family_code").getAsString()) {
 			case "moodle": 
-				if (iss.equals("https://respondog.com")) uc.setRequestProperty("Host", "respondog.com"); // prevents code 400 failure in Moodle due to getRemoteHost()->chem-vantage-hrd.appspot.com
+				if (iss.equals("https://respondog.com")) uc.setRequestProperty("Host", "respondog.com"); // prevents code 400 failure in Moodle due to getRemoteHost()->respondog.appspot.com
 				break;
 			default:
 			}
@@ -759,7 +767,7 @@ public class LTIRegistration extends HttpServlet {
 				+ "The LTI Advantage deployment was created in ResponDog and in your LMS.<br/>"
 				+ "Please be sure to activate the deployment in your LMS.<br/><br/>");
 
-		if (request.getServerName().contains("dev-vantage-hrd.appspot.com")) {
+		if (request.getServerName().contains("dev-respondog.appspot.com")) {
 			buf.append("ResponDog is pleased to provide free access to our software development server for testing LTI connections. "
 					+ "Please note that the server is sometimes in an unstable state, and accounts may be reset or even deleted at any time.<br/><br/>");
 		} else {
@@ -818,8 +826,10 @@ public class LTIRegistration extends HttpServlet {
 		String iss = null;
 		switch (project_id) {
 		case "respondog":
-			iss = "https://respondog.appspot.com";
+			iss = "https://respondog.com";
 			break;
+		case "dev-respondog":
+			iss = "https://dev-respondog.appspot.com";
 		}
 		
 		buf.append("<h2>ResponDog Registration Success</h2>"
@@ -829,7 +839,7 @@ public class LTIRegistration extends HttpServlet {
 				+ "Deployment ID: " + d.getDeploymentId() + "<br/>"
 				+ "Client ID: " + d.client_id + "<br/><br/>");
 		
-		if (iss.contains("dev-vantage-hrd.appspot.com")) {
+		if (iss.contains("dev-respondog.appspot.com")) {
 			buf.append("ResponDog is pleased to provide free access to our software development server for testing LTI connections. "
 					+ "Please note that the server is sometimes in an unstable state, and accounts may be reset or even deleted at any time. ");
 		} else {
