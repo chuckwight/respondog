@@ -83,11 +83,11 @@ Please tell us about your school, business or organization:<br/>
 <% } %>
 
 Pricing:
-  <ol>
+  <ul>
 	<li>ResponDog is completely free for educational use at nonprofit schools and universities.</li>
 	<li>Commercial and personal accounts are $19/month for each instructor/presenter after a 30-day free trial period.</li>
 	<li>Poll participants are always free.</li>
-  </ol>
+  </ul>
 
 <label><input type=checkbox name=AcceptResponDogTOS value=true <%= ((AcceptResponDogTOS!=null && AcceptResponDogTOS.equals("true"))?"checked":"") %>/>Accept the <a href=/about.html#terms target=_blank aria-label='opens new tab'>ResponDog Terms of Service</a></label><br/><br/>
 
