@@ -326,44 +326,35 @@ public class Question implements Serializable, Cloneable {
 		case 6: // FIVE_STAR rating
 			buf.append(text);
 			buf.append("<br/>");
-			buf.append("<input type=hidden id=" + this.id + " name=" + this.id + " value='" + studentAnswer + "' />");
 			buf.append("<span id='vote" + this.id + "' style='color:#EE0000;font-size:small;'>(click a star):</span><br/>");
-			int initialStars = 0;
-			try { initialStars = Integer.parseInt(studentAnswer); } catch (Exception e) {}
-			for (int istar=0;istar<5;istar++) {
-				buf.append("<img src='" + (istar>initialStars?"/images/star1.gif":"/images/star2.gif") + "' id='" + (Character.valueOf((char)('a'+istar)) + this.id) + "' style='width:30px; height:30px;' alt='empty star' "        // properties
-						+ "onmouseover=showStars(this.id) onmouseout=showStars(0) onClick='set=false;showStars(thid.id);setStars(thid.id);' />" ); // mouse actions
+			for (int i=1;i<6;i++) {
+				buf.append("<img src='images/star1.gif' id='star" + i + String.valueOf(this.id) + "' style='width:30px; height:30px;' alt='star' "        // properties
+						+ "onmouseover=showStars" + this.id + "(" + i + ") onmouseout=showStars" + this.id + "(0) onclick=showStars" + this.id + "(" + i + ",true) />" ); // mouse actions
 			}
+			buf.append("<input id=" + this.id + " type=hidden name=" + this.id + " />");
 			buf.append("&nbsp;&nbsp;&nbsp;&nbsp;<input type=range min=1 max=5 style='opacity:0' onfocus=this.style='opacity:1' oninput='set=false;showStars(this.value);setStars(this.value)'>");
 			buf.append("<br clear='all'>");
 			buf.append("<script>"
-					+ "var star1 = new Image(); star1.src='images/star1.gif';\n"
-					+ "var star2 = new Image(); star2.src='images/star2.gif';\n"
-					+ "var set = false;"
-					+ "function showStars(id) {"
-					+ "  if (!set) {"
-					+ "    let base_id = id.substring(1);"
-					+ "    document.getElementById('vote'+base_id).innerHTML=(n==0?'(click a star)':''+n+(n>1?' stars':' star'));"
-					+ "  let n = id.charCodeAt(0) - 'a'.charCodeAt(0) + 1;"   // runs from 1-5
-					+ "    for (i=1;i<6;i++) {"
-					+ "      document.getElementById((String.fromCharCode(96+i)+id).src=(i<=n?star2.src:star1.src);"
-					+ "    }"
-					+ "  }"
-					+ "}"
-					+ "function setStars(id) {"
-					+ "  let n = id.charCodeAt(0) - 'a'.charCodeAt(0) + 1;"   // runs from 1-5
-					+ "  set = (n>0?true:false);"
-					+ "  document.getElementById(id).value = n;"
+					+ "var fixed" + this.id + " = false;"
+					+ "function showStars" + this.id + "(nStars,clicked=false) {"
+					+ "  if (fixed" + this.id + " && !clicked) return;"
+					+ "  document.getElementById('vote" + this.id + "').innerHTML=(nStars==0?'(click a star)':nStars+(nStars>1?' stars':' star'));"  // unary operator + converts string to int
+					+ "  for (i=1;i<6;i++) document.getElementById('star'+i+'" + this.id + "').src = (nStars<i?'images/star1.gif':'images/star2.gif');"
+					+ "  fixed" + this.id + " = clicked;"
+					+ "  if (clicked) document.getElementById('" + this.id + "').value=nStars;"
 					+ "}"
 					+ "</script>\n");
+			int initialStars = 0;
+			try { 
+				initialStars = Integer.parseInt(studentAnswer);
+				buf.append("<script>showStars" + this.id + "(" + initialStars + ",true);</script>");
+			} catch (Exception e) {}
 			break;
 		case 7: // Short ESSAY question
 			buf.append(text);
 			buf.append("<br/>");
 			buf.append("<span style='color:#EE0000;font-size:small;'>(800 characters max):</span><br/>");
-			buf.append("<textarea id=" + this.id + " name=" + this.id + " rows=5 cols=60 wrap=soft placeholder='Enter your answer here' "				
-					+ "onKeyUp=document.getElementById('" + this.id + "').value=document.getElementById('" + this.id + "').value.substring(0,800);}>"
-					+ studentAnswer + "</textarea><br>");
+			buf.append("<textarea id=" + this.id + " name=" + this.id + " rows=5 cols=60 wrap=soft placeholder='Enter your answer here' maxlength=800 >" + studentAnswer + "</textarea><br>");
 			break;
 		}
 		return buf.toString();
@@ -452,25 +443,22 @@ public class Question implements Serializable, Cloneable {
 		case 6: // FIVE_STAR rating
 			buf.append(text);
 			buf.append("<br/>");
-			buf.append("<span id='vote' style='color:#EE0000;font-size:small;'>(click a star):</span><br/>");
-			for (int istar=1;istar<6;istar++) {
-				buf.append("<img src='/images/star1.gif' id='" + istar + "' style='width:30px; height:30px;' alt='empty star' "        // properties
-						+ "onmouseover=showStars(this.id) onmouseout=showStars(this.id) onClick='set=false;showStars(this.id);setStars(this.id);' />" ); // mouse actions
+			buf.append("<span id='vote" + this.id + "' style='color:#EE0000;font-size:small;'>(click a star):</span><br/>");
+			for (int i=1;i<6;i++) {
+				buf.append("<img src='images/star1.gif' id='star" + i + String.valueOf(this.id) + "' style='width:30px; height:30px;' alt='star' "        // properties
+						+ "onmouseover=showStars" + this.id + "(" + i + ") onmouseout=showStars" + this.id + "(0) onclick=showStars" + this.id + "(" + i + ",true) />" ); // mouse actions
 			}
+			buf.append("<input id=" + this.id + " type=hidden name=" + this.id + " />");
 			buf.append("&nbsp;&nbsp;&nbsp;&nbsp;<input type=range min=1 max=5 style='opacity:0' onfocus=this.style='opacity:1' oninput='set=false;showStars(this.value);setStars(this.value)'>");
 			buf.append("<br clear='all'>");
 			buf.append("<script>"
-					+ "var star1 = new Image(); star1.src='/images/star1.gif';"
-					+ "var star2 = new Image(); star2.src='/images/star2.gif';"
-					+ "var set = false;"
-					+ "function showStars(n) {"
-					+ "  if (!set) {"
-					+ "    document.getElementById('vote').innerHTML=(n==0?'(click a star)':''+n+(n>1?' stars':' star'));"
-					+ "    for (i=1;i<6;i++) document.getElementById(n).src=(i<=n?star2.src:star1.src);"
-					+ "  }"
-					+ "}"
-					+ "function setStars(id,n) {"
-					+ "  set = (n>0?true:false);"
+					+ "var fixed" + this.id + " = false;"
+					+ "function showStars" + this.id + "(nStars,clicked=false) {"
+					+ "  if (fixed" + this.id + " && !clicked) return;"
+					+ "  document.getElementById('vote" + this.id + "').innerHTML=(nStars==0?'(click a star)':nStars+(nStars>1?' stars':' star'));"  // unary operator + converts string to int
+					+ "  for (i=1;i<6;i++) document.getElementById('star'+i+'" + this.id + "').src = (nStars<i?'images/star1.gif':'images/star2.gif');"
+					+ "  fixed" + this.id + " = clicked;"
+					//+ "  if (clicked) document.getElementById('" + this.id + "').value=nStars;"
 					+ "}"
 					+ "</script>\n");
 			break;
@@ -567,15 +555,30 @@ public class Question implements Serializable, Cloneable {
 			}
 			break;  
 		case 6:
+			buf.append(parseString(text) + "<br/>");
 			break;
 		case 7:
+			buf.append(parseString(text) + "<br/>");
 			break;
 		}
 		
 		buf.append("<br/>");
 		if (studentAnswer==null || studentAnswer.isEmpty()) buf.append("<b>No answer was submitted for this question item.</b><p></p>");
 		else {
-			buf.append("<b>The answer submitted was: " + studentAnswer + "</b>&nbsp;");
+			switch (getQuestionType()) {
+			case 6: buf.append("<b>The answer submitted was:</b> " + studentAnswer + " stars<br/>");
+				int nStars = 0;
+				try { nStars = Integer.parseInt(studentAnswer); } catch (Exception e) {}
+				for (int i=1;i<6;i++) {
+					buf.append("<img src=" + (nStars<i?"images/star1.gif":"images/star2.gif") + " style='width:30px; height:30px;' alt='star' />");
+				}
+				buf.append("<br/>");
+				break;
+			case 7: buf.append("<b>The answer submitted was:</b><div style='border: solid 1px'>" + studentAnswer + "</div>"); 
+				break;
+			default: buf.append("<b>The answer submitted was: " + studentAnswer + "</b>&nbsp;");
+			}
+			
 			if (correctAnswer != null && !correctAnswer.isEmpty()) {
 				if (this.isCorrect(studentAnswer)) buf.append("&nbsp;<IMG SRC=/images/checkmark.gif ALT='Check mark' align=bottom>");
 				else if (this.agreesToRequiredPrecision(studentAnswer)) buf.append("<IMG SRC=/images/partCredit.png ALT='minus 1 sig figs' align=middle>"
@@ -844,7 +847,7 @@ public class Question implements Serializable, Cloneable {
 				buf.append("Question Text:<br/><TEXTAREA name=QuestionText rows=5 cols=50 wrap=soft>" + amp2html(text) + "</TEXTAREA><br/>");
 				buf.append("<span id='vote' style='color:#EE0000;font-size:small;'>(click a star):</span><br/>");
 				for (int istar=1;istar<6;istar++) {
-					buf.append("<img src='/images/star1.gif' id='" + istar + "' style='width:30px; height:30px;' alt='empty star' /> ");
+					buf.append("<img src='/images/star1.gif' id='" + istar + "' style='width:30px; height:30px;' alt='empty star' />");
 				}
 				buf.append("<br/>");
 				break;

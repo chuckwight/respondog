@@ -315,7 +315,7 @@ public class Poll extends HttpServlet {
 
 			buf.append("<OL>");
 			int possibleScore = 0;
-			buf.append("<form id=pollForm method=post action='/Poll' onSubmit='return confirmSubmission(" + a.questionKeys.size() + ")'>"
+			buf.append("<form id=pollForm method=post action='/Poll'>"  // onSubmit='return confirmSubmission(" + a.questionKeys.size() + ")'>"
 					+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />");
 
 			// see if this user already has a submission for this assignment; else get a new PollTransaction
@@ -335,7 +335,7 @@ public class Poll extends HttpServlet {
 
 			buf.append("<div id='timer1' style='color: #EE0000'></div><br/>");
 			buf.append(timer(user));
-			buf.append(confirmSubmission(user)); 
+			//buf.append(confirmSubmission(user)); 
 
 			buf.append("<input type=hidden name=PossibleScore value='" + possibleScore + "' />");
 			buf.append("<input type=hidden name=UserRequest value='SubmitResponses' />");
@@ -349,7 +349,7 @@ public class Poll extends HttpServlet {
 			throw new Exception("Poll.showPollQuestions failed:" + e.getMessage()==null?e.toString():e.getMessage());
 		}
 	}
-	
+/*	
 	private static String confirmSubmission(User u) {
 		return "<SCRIPT>"
 				+ "function confirmSubmission(nQuestions) {"
@@ -360,7 +360,7 @@ public class Poll extends HttpServlet {
 				+ "  var lastCheckboxIndex;"
 				+ "  nAnswers = 0;"
 				+ "  for (i=0;i<elements.length;i++) {"
-				+ "    if (isNaN(elements[i].name)) continue;"
+				+ "    if (isNaN(elements[i].id)) continue;"
 				+ "    if (elements[i].type=='text' && elements[i].value.length>0) nAnswers++;"
 				+ "    else if (elements[i].type=='radio' && elements[i].checked) nAnswers++;"
 				+ "    else if (elements[i].type=='checkbox') {"
@@ -371,7 +371,9 @@ public class Poll extends HttpServlet {
 				+ "        i = lastCheckboxIndex;"
 				+ "        break;"
 				+ "      }"
-				+ "    }"
+				+ "    } "
+				+ "    else if (elements[i].type='hidden' && elements[i].value>0) nAnswers++;"
+				//+ "    else if (elements[i].type='textarea' && elements[i].value.length()>0) nAnswers++;"
 				+ "  }"
 				+ "  if (nAnswers<nQuestions) return confirm('Submit your responses now? ' + (nQuestions-nAnswers) + ' answers may have been left blank.');"
 				+ "  else return true;"
@@ -379,7 +381,7 @@ public class Poll extends HttpServlet {
 				+ "function showWorkBox(qid) {}" 
 				+ "</SCRIPT>"; 
 	}
-
+*/
 	private static PollTransaction submitResponses(User user,Assignment a,HttpServletRequest request) {
 		if (a.pollIsClosed) return null;
 		
@@ -679,7 +681,24 @@ public class Poll extends HttpServlet {
 						}
 					}
 					break;
-				default:
+				case Question.FIVE_STAR:
+					for (int iStars=1;iStars<6;iStars++) histogram.put(String.valueOf(iStars) + (iStars==1?" star":" stars"), 0);
+					for (PollTransaction t : pts) {
+						if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
+						try {
+							String nStars = t.responses.get(k);
+							Integer.parseInt(nStars);
+							histogram.put(nStars + (nStars.equals("1")?" star":" stars"),histogram.get(nStars + (nStars.equals("1")?" star":" stars"))+1);
+						} catch (Exception e) {}
+					}
+					break;
+				case Question.ESSAY:
+					histogram.put("Number of responses", 0);
+					for (PollTransaction t : pts) {
+						if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
+						if (t.responses.get(k).length()>0) histogram.put("Number of responses", histogram.get("Number of responses")+1);
+					}
+					default:
 				}
 				debug.append("histogram initialized.");
 				
@@ -730,7 +749,23 @@ public class Poll extends HttpServlet {
 							if (otherResponses != null) buf.append("<tr><td colspan=2><br />Incorrect Responses: " + otherResponses + "</td></tr>");							
 							buf.append("</table>");
 						} else buf.append(otherResponses);
-						break;	
+						break;
+					case Question.FIVE_STAR:
+						buf.append("Summary of responses received for this question:<p></p>");
+						buf.append("<table>");
+						for (int iStars=5;iStars>0;iStars--) {
+							buf.append("<tr><td>");
+							buf.append(String.valueOf(iStars) + (iStars==1?" star":" stars"));
+							buf.append("</td><td>");
+							buf.append("<div style='background-color: blue;display: inline-block; width: " + 150*histogram.get(String.valueOf(iStars) + (iStars==1?" star":" stars"))/(totalValues+1) + "px;'>&nbsp;</div>");
+							buf.append("&nbsp;" + histogram.get(String.valueOf(iStars) + (iStars==1?" star":" stars")) + "</td></tr>");
+						}
+						buf.append("</table><br/><br/>");
+						break;
+					case Question.ESSAY:
+						int nEssays = histogram.get("Number of responses");
+						buf.append("A total of " + nEssays + (nEssays==1?" essay was ":" essays were ") + "submitted for this question.");
+						break;
 					}
 				} else buf.append("No responses were submitted for this question.");
 				
@@ -939,7 +974,7 @@ public class Poll extends HttpServlet {
 	}
 
 	private static String editQuestion (User user,HttpServletRequest request) {
-		StringBuffer buf = new StringBuffer();
+		StringBuffer buf = new StringBuffer(Subject.banner);
 		try {
 			long questionId = Long.parseLong(request.getParameter("QuestionId"));
 			Question q = ofy().load().type(Question.class).id(questionId).safe();
@@ -950,7 +985,7 @@ public class Poll extends HttpServlet {
 			buf.append("<h3>Current Question</h3>");
 			//buf.append("Assignment Type: Poll<br>");
 			buf.append("Author: " + q.authorId + "<br>");
-			buf.append("Editor: " + q.editorId + "<br>");
+			buf.append("Editor: " + q.editorId + "<br><br/>");
 			
 			buf.append("<FORM Action=/Poll METHOD=POST>"
 					+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />");
@@ -983,7 +1018,7 @@ public class Poll extends HttpServlet {
 	}
 	
 	private static String previewQuestion(User user,HttpServletRequest request) {
-		StringBuffer buf = new StringBuffer();
+		StringBuffer buf = new StringBuffer(Subject.banner);
 		StringBuffer debug = new StringBuffer("Debug:");
 		try {
 			long questionId = 0;
