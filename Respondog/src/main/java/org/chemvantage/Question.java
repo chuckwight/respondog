@@ -332,7 +332,7 @@ public class Question implements Serializable, Cloneable {
 						+ "onmouseover=showStars" + this.id + "(" + i + ") onmouseout=showStars" + this.id + "(0) onclick=showStars" + this.id + "(" + i + ",true) />" ); // mouse actions
 			}
 			buf.append("<input id=" + this.id + " type=hidden name=" + this.id + " />");
-			buf.append("&nbsp;&nbsp;&nbsp;&nbsp;<input type=range min=1 max=5 style='opacity:0' onfocus=this.style='opacity:1' oninput='set=false;showStars(this.value);setStars(this.value)'>");
+			buf.append("&nbsp;&nbsp;&nbsp;&nbsp;<input type=range min=1 max=5 style='opacity:0' onfocus=this.style='opacity:1' oninput='showStars" + this.id + "(this.value,true);' />");
 			buf.append("<br clear='all'>");
 			buf.append("<script>"
 					+ "var fixed" + this.id + " = false;"
@@ -449,8 +449,7 @@ public class Question implements Serializable, Cloneable {
 						+ "onmouseover=showStars" + this.id + "(" + i + ") onmouseout=showStars" + this.id + "(0) onclick=showStars" + this.id + "(" + i + ",true) />" ); // mouse actions
 			}
 			buf.append("<input id=" + this.id + " type=hidden name=" + this.id + " />");
-			buf.append("&nbsp;&nbsp;&nbsp;&nbsp;<input type=range min=1 max=5 style='opacity:0' onfocus=this.style='opacity:1' oninput='set=false;showStars(this.value);setStars(this.value)'>");
-			buf.append("<br clear='all'>");
+			buf.append("<br/><br/>");
 			buf.append("<script>"
 					+ "var fixed" + this.id + " = false;"
 					+ "function showStars" + this.id + "(nStars,clicked=false) {"
