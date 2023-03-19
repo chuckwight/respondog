@@ -64,7 +64,8 @@ public class Question implements Serializable, Cloneable {
 	public static final int SELECT_MULTIPLE = 3;
 	public static final int FILL_IN_WORD = 4;
 	public static final int NUMERIC = 5;
-	
+	public static final int FIVE_STAR = 6;
+	public static final int ESSAY = 7;
 
 	Question() {}
 
@@ -76,8 +77,10 @@ public class Question implements Serializable, Cloneable {
 		case (4): this.type = "FILL_IN_WORD"; break;
 		case (5): this.type = "NUMERIC";
 				  this.significantFigures = 3;
-				  this.requiredPrecision = 2; // percent
+				  this.requiredPrecision = 1; // percent
 				  break;
+		case (6): this.type = "FIVE_STAR"; break;
+		case (7): this.type = "ESSAY"; break;
 		default:  this.type = null;
 		}
 		this.correctAnswer = "";
@@ -319,7 +322,49 @@ public class Question implements Serializable, Cloneable {
 			}
 			buf.append("<label><input size=25 type=text name=" + this.id + " id=answer" + this.id + " value='" + studentAnswer + "' placeholder='" + placeholder + "' onFocus=showWorkBox('" + this.id + "'); />");
 			buf.append("&nbsp;" + parseString(tag) + "</label><br/><br/>");
-			break;        
+			break;  
+		case 6: // FIVE_STAR rating
+			buf.append(text);
+			buf.append("<br/>");
+			buf.append("<input type=hidden id=" + this.id + " name=" + this.id + " value='" + studentAnswer + "' />");
+			buf.append("<span id='vote" + this.id + "' style='color:#EE0000;font-size:small;'>(click a star):</span><br/>");
+			int initialStars = 0;
+			try { initialStars = Integer.parseInt(studentAnswer); } catch (Exception e) {}
+			for (int istar=0;istar<5;istar++) {
+				buf.append("<img src='" + (istar>initialStars?"/images/star1.gif":"/images/star2.gif") + "' id='" + (Character.valueOf((char)('a'+istar)) + this.id) + "' style='width:30px; height:30px;' alt='empty star' "        // properties
+						+ "onmouseover=showStars(this.id) onmouseout=showStars(0) onClick='set=false;showStars(thid.id);setStars(thid.id);' />" ); // mouse actions
+			}
+			buf.append("&nbsp;&nbsp;&nbsp;&nbsp;<input type=range min=1 max=5 style='opacity:0' onfocus=this.style='opacity:1' oninput='set=false;showStars(this.value);setStars(this.value)'>");
+			buf.append("<br clear='all'>");
+			buf.append("<script>"
+					+ "var star1 = new Image(); star1.src='images/star1.gif';\n"
+					+ "var star2 = new Image(); star2.src='images/star2.gif';\n"
+					+ "var set = false;"
+					+ "function showStars(id) {"
+					+ "  if (!set) {"
+					+ "    let base_id = id.substring(1);"
+					+ "    document.getElementById('vote'+base_id).innerHTML=(n==0?'(click a star)':''+n+(n>1?' stars':' star'));"
+					+ "  let n = id.charCodeAt(0) - 'a'.charCodeAt(0) + 1;"   // runs from 1-5
+					+ "    for (i=1;i<6;i++) {"
+					+ "      document.getElementById((String.fromCharCode(96+i)+id).src=(i<=n?star2.src:star1.src);"
+					+ "    }"
+					+ "  }"
+					+ "}"
+					+ "function setStars(id) {"
+					+ "  let n = id.charCodeAt(0) - 'a'.charCodeAt(0) + 1;"   // runs from 1-5
+					+ "  set = (n>0?true:false);"
+					+ "  document.getElementById(id).value = n;"
+					+ "}"
+					+ "</script>\n");
+			break;
+		case 7: // Short ESSAY question
+			buf.append(text);
+			buf.append("<br/>");
+			buf.append("<span style='color:#EE0000;font-size:small;'>(800 characters max):</span><br/>");
+			buf.append("<textarea id=" + this.id + " name=" + this.id + " rows=5 cols=60 wrap=soft placeholder='Enter your answer here' "				
+					+ "onKeyUp=document.getElementById('" + this.id + "').value=document.getElementById('" + this.id + "').value.substring(0,800);}>"
+					+ studentAnswer + "</textarea><br>");
+			break;
 		}
 		return buf.toString();
 	}
@@ -391,8 +436,7 @@ public class Question implements Serializable, Cloneable {
 			case 2: int sf = (int)Math.ceil(-Math.log10(requiredPrecision/100.))+1;
 				buf.append("<span style='color:#EE0000;font-size: small;'>Include at least " + sf + " significant figures in your answer. <a href=# onclick=\"alert('To be scored correct, your answer must agree with the correct answer to at least " + sf + " significant figures. You may use scientific E notation. Example: enter 3.56E-12 to represent the number 3.56\u00D710\u207B\u00B9\u00B2');return false;\">&#9432;</a></span><br/>"); break;
 			case 3: buf.append("<span style='color:#EE0000;font-size: small;'>Enter the value with the appropriate number of significant figures. <a href=# onclick=\"alert('Use the information in the problem to determine the correct number of sig figs in your answer. You may use scientific E notation. Example: enter 3.56E-12 to represent the number 3.56\u00D710\u207B\u00B9\u00B2');return false;\">&#9432;</a></span><br/>"); break;
-			default:
-			}			
+			}
 			buf.append("<span style='border: 1px solid black'>"
 					+ "<b>" + (this.hasACorrectAnswer()?getCorrectAnswer():"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;") + "</b>"
 					+ "</span>");
@@ -404,8 +448,42 @@ public class Question implements Serializable, Cloneable {
 				buf.append("Solution:<br/>" + parseString(solution));
 			}
 			buf.append("<br/>");
-			break;        
-		}
+			break;
+		case 6: // FIVE_STAR rating
+			buf.append(text);
+			buf.append("<br/>");
+			buf.append("<span id='vote' style='color:#EE0000;font-size:small;'>(click a star):</span><br/>");
+			for (int istar=1;istar<6;istar++) {
+				buf.append("<img src='/images/star1.gif' id='" + istar + "' style='width:30px; height:30px;' alt='empty star' "        // properties
+						+ "onmouseover=showStars(this.id) onmouseout=showStars(this.id) onClick='set=false;showStars(this.id);setStars(this.id);' />" ); // mouse actions
+			}
+			buf.append("&nbsp;&nbsp;&nbsp;&nbsp;<input type=range min=1 max=5 style='opacity:0' onfocus=this.style='opacity:1' oninput='set=false;showStars(this.value);setStars(this.value)'>");
+			buf.append("<br clear='all'>");
+			buf.append("<script>"
+					+ "var star1 = new Image(); star1.src='/images/star1.gif';"
+					+ "var star2 = new Image(); star2.src='/images/star2.gif';"
+					+ "var set = false;"
+					+ "function showStars(n) {"
+					+ "  if (!set) {"
+					+ "    document.getElementById('vote').innerHTML=(n==0?'(click a star)':''+n+(n>1?' stars':' star'));"
+					+ "    for (i=1;i<6;i++) document.getElementById(n).src=(i<=n?star2.src:star1.src);"
+					+ "  }"
+					+ "}"
+					+ "function setStars(id,n) {"
+					+ "  set = (n>0?true:false);"
+					+ "}"
+					+ "</script>\n");
+			break;
+		case 7: // Short ESSAY question
+			buf.append(text);
+			buf.append("<br/>");
+			buf.append("<span style='color:#EE0000;font-size:small;'>(800 characters max):</span><br/>");
+			buf.append("<textarea id=" + this.id + " name=" + this.id + " rows=5 cols=60 wrap=soft placeholder='Enter your answer here' "				
+					+ "onKeyUp=document.getElementById('" + this.id + "').value=document.getElementById('" + this.id + "').value.substring(0,800);}>"
+					+ "</textarea><br>");
+			break;
+		default:
+		}			
 		return buf.toString();
 	}
 
@@ -487,7 +565,11 @@ public class Question implements Serializable, Cloneable {
 			if (showDetails && solution.length()>0) {
 				buf.append("<br/>Solution:<br/>" + parseString(solution) + "<br/>");
 			}
-			break;        
+			break;  
+		case 6:
+			break;
+		case 7:
+			break;
 		}
 		
 		buf.append("<br/>");
@@ -627,16 +709,20 @@ public class Question implements Serializable, Cloneable {
 		if (type.equals("SELECT_MULTIPLE")) return 3;
 		if (type.equals("FILL_IN_WORD")) return 4;
 		if (type.equals("NUMERIC")) return 5;
+		if (type.equals("FIVE_STAR")) return 6;
+		if (type.equals("ESSAY")) return 7;
 		else return 0;
 	}
 
 	static String getQuestionType(int type) {
 		switch (type) {
-			case(1): return "MULTIPLE_CHOICE";
-			case(2): return "TRUE_FALSE";
-			case(3): return "SELECT_MULTIPLE";
-			case(4): return "FILL_IN_WORD";
-			case(5): return "NUMERIC";
+			case (1): return "MULTIPLE_CHOICE";
+			case (2): return "TRUE_FALSE";
+			case (3): return "SELECT_MULTIPLE";
+			case (4): return "FILL_IN_WORD";
+			case (5): return "NUMERIC";
+			case (6): return "FIVE_STAR";
+			case (7): return "ESSAY";
 			default: return "";
 		}
 	}
@@ -648,6 +734,8 @@ public class Question implements Serializable, Cloneable {
 		case (3): type = "SELECT_MULTIPLE"; break;
 		case (4): type = "FILL_IN_WORD"; break;
 		case (5): type = "NUMERIC"; break;
+		case (6): type = "FIVE_STAR"; break;
+		case (7): type = "ESSAY"; break;
 		default:  type = "";
 		}
 	}
@@ -707,8 +795,7 @@ public class Question implements Serializable, Cloneable {
 				buf.append("<label>Check here to scramble the choices: <input type=checkbox name=ScrambleChoices value=true " + (this.scrambleChoices?"CHECKED":"") + " /></label><br/>");
 				break;
 			case 4: // Fill-in-the-Word
-				buf.append("Question Text:<br/><TEXTAREA name=QuestionText rows=5 cols=50 wrap=soft>" 
-						+ amp2html(text) + "</TEXTAREA><br/>");
+				buf.append("Question Text:<br/><TEXTAREA name=QuestionText rows=5 cols=50 wrap=soft>" + amp2html(text) + "</TEXTAREA><br/>");
 				buf.append("<span style='color:#EE0000;font-size: small;'>Enter the correct word or phrase.<br/>"
 						+ "Multiple correct answers can be entered as a comma-separated list.</span><br/>");
 				buf.append("<input type=text name=CorrectAnswer value=\"" 
@@ -719,8 +806,7 @@ public class Question implements Serializable, Cloneable {
 						+ "<label><input type=checkbox name=StrictSpelling value='" + strictSpelling + "' />Enforce strict spelling (otherwise slightly lenient)</label><br/><br/>");
 				break;
 			case 5: // Numeric Answer
-				buf.append("Question Text:<br/><TEXTAREA name=QuestionText rows=5 cols=60 wrap=soft>" 
-						+ amp2html(text) + "</TEXTAREA><br/>");
+				buf.append("Question Text:<br/><TEXTAREA name=QuestionText rows=5 cols=60 wrap=soft>" + amp2html(text) + "</TEXTAREA><br/>");
 				//buf.append("<FONT SIZE=-2>Significant figures: <input size=5 name=SignificantFigures value='" + significantFigures + "'/> Required precision: <input size=5 name=RequiredPrecision value='" + requiredPrecision + "'/> (set to zero to require exact answer)</FONT><br/>");
 				switch (getNumericItemType()) {
 				case 0: buf.append("<span style='color:#EE0000;font-size: small;'>Enter the exact value. <a href=# onclick=\"alert('Your answer must have exactly the correct value. You may use scientific E notation. Example: enter 3.56E-12 to represent the number 3.56\u00D710\u207B\u00B9\u00B2');return false;\">&#9432;</a></span><br/>"); break;
@@ -753,6 +839,20 @@ public class Question implements Serializable, Cloneable {
 				//buf.append("Hint:<br/><TEXTAREA NAME=Hint ROWS=3 COLS=60 WRAP=SOFT>" + amp2html(hint) + "</TEXTAREA><br/>");
 				buf.append("Solution:<br/><TEXTAREA NAME=Solution ROWS=10 COLS=60 WRAP=SOFT>" 
 						+ amp2html(solution) + "</TEXTAREA><br/>");
+				break;
+			case 6:  // 5-Star rating
+				buf.append("Question Text:<br/><TEXTAREA name=QuestionText rows=5 cols=50 wrap=soft>" + amp2html(text) + "</TEXTAREA><br/>");
+				buf.append("<span id='vote' style='color:#EE0000;font-size:small;'>(click a star):</span><br/>");
+				for (int istar=1;istar<6;istar++) {
+					buf.append("<img src='/images/star1.gif' id='" + istar + "' style='width:30px; height:30px;' alt='empty star' /> ");
+				}
+				buf.append("<br/>");
+				break;
+			case 7:  // Short ESSAY
+				buf.append("Question Text:<br/><TEXTAREA name=QuestionText rows=5 cols=50 wrap=soft>" + amp2html(text) + "</TEXTAREA><br/>");
+				buf.append("<span style='color:#EE0000;font-size:small;'>(800 characters max):</span><br/>");
+				buf.append("<div style='border: solid 2px;width:300px;height:100px'></div>");
+				buf.append("<br/>");
 				break;
 			}
 		}

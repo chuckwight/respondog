@@ -855,29 +855,29 @@ public class Poll extends HttpServlet {
 	}
 	
 	private static String newQuestionForm(User user,HttpServletRequest request) {
-		StringBuffer buf = new StringBuffer();
+		StringBuffer buf = new StringBuffer(Subject.banner);
 		String assignmentType = "Poll";
 		int questionType = 0;
 		try {
 			questionType = Integer.parseInt(request.getParameter("QuestionType"));
 			switch (questionType) {
 			case (1): 
-				buf.append("<h3>New Multiple-Choice " + assignmentType + " Question</h3>");
+				buf.append("<h3>New Multiple-Choice Question</h3>");
 				buf.append("Enter the question text and up to 5 choices. If there is a correct answer, "
 					+ "select it, but if you are asking for an opinion, you may leave all choices unselected."); 
 				break;
 			case (2): 
-				buf.append("<h3>New True-False " + assignmentType + " Question</h3>");
+				buf.append("<h3>New True-False Question</h3>");
 				buf.append("Write the question as an affirmative statement. Then select the true statement, "
 						+ "or leave both unselected if you are asking for an opinion.");
 				break;
 			case (3): 
-				buf.append("<h3>New Select-Multiple " + assignmentType + " Question</h3>");
+				buf.append("<h3>New Select-Multiple Question</h3>");
 				buf.append("Enter the question text and up to 5 choices. If there are correct answers, "
 					+ "select them, but if you are asking for an opinion you may leave them all unselected.");
 				break;
 			case (4): 
-				buf.append("<h3>New Fill-in-Word " + assignmentType + " Question</h3>");
+				buf.append("<h3>New Fill-in-Word Question</h3>");
 				buf.append("Start the question text in the upper textarea box. Indicate "
 					+ "the correct answer (and optionally, an alternative correct answer) in "
 					+ "the middle box, or leave it blank to ask for an opinion. Finish the sentence in "
@@ -885,12 +885,22 @@ public class Poll extends HttpServlet {
 					+ "is somewhat lenient.");
 				break;
 			case (5): 
-				buf.append("<h3>New Numeric " + assignmentType + " Question</h3>");
+				buf.append("<h3>New Numeric Question</h3>");
 				buf.append("Fill in the question text in the upper textarea box and "
 					+ "the correct numeric answer below, or leave blank to ask an opinion. Indicate the required precision "
 					+ "of the student's response in percent (default = 1%). Use the bottom "
 					+ "textarea box to finish the question text and/or to indicate the "
 					+ "expected dimensions or units of the student's answer."); 
+				break;
+			case (6):
+				buf.append("<h3>New 5-Star Rating Question</h3>");
+			buf.append("Ask the participants to rate something from 1 to 5 stars.");			
+				break;
+			case (7):
+				buf.append("<h3>New Short Essay Question</h3>");
+				buf.append("Ask the participants to briefly explain something in a few sentences. Note that this item "
+						+ "cannot be scored automatically, so participants will be awarded full credit for providing any response. "
+						+ "The instructor has the ability to review the participant responses and score them, if desired.");			
 				break;
 			default: buf.append("An unexpected error occurred. Please try again.");
 			}
@@ -906,9 +916,9 @@ public class Poll extends HttpServlet {
 			buf.append("Point Value: <input type=text size=2 name=PointValue value=1 /><br />");
 			buf.append(question.edit());
 			buf.append("<INPUT TYPE=SUBMIT NAME=UserRequest VALUE='Preview' />"
-					+ "</FORM>");
+					+ "</FORM><br/><br/>");
 		} catch (Exception e) {
-			buf.append("<h2>Create a Custom Question</h2>");
+			buf.append("<h2>Create A New Question</h2>");
 			buf.append("<FORM NAME=NewQuestion METHOD=GET ACTION='/Poll'>");
 			buf.append("Select one of the following question types:<br />"
 					+ "<INPUT TYPE=HIDDEN NAME=sig VALUE='" + user.getTokenSignature() + "' />"
@@ -918,8 +928,12 @@ public class Poll extends HttpServlet {
 					+ "<INPUT TYPE=BUTTON onCLick=\"document.NewQuestion.QuestionType.value=2;submit()\" VALUE='True/False' /> "
 					+ "<INPUT TYPE=BUTTON onCLick=\"document.NewQuestion.QuestionType.value=3;submit()\" VALUE='Select Multiple' /> "
 					+ "<INPUT TYPE=BUTTON onCLick=\"document.NewQuestion.QuestionType.value=4;submit()\" VALUE='Fill in Word' /> "
-					+ "<INPUT TYPE=BUTTON onCLick=\"document.NewQuestion.QuestionType.value=5;submit()\" VALUE='Numeric' />"
-					+ "</FORM><br/><br/>");
+					+ "<INPUT TYPE=BUTTON onCLick=\"document.NewQuestion.QuestionType.value=5;submit()\" VALUE='Numeric' /> ");
+			if (request.getServerName().contains("dev-respondog.appspot.com")) {
+				buf.append("<INPUT TYPE=BUTTON onCLick=\"document.NewQuestion.QuestionType.value=6;submit()\" VALUE='5-Star Rating' /> "
+					+ "<INPUT TYPE=BUTTON onCLick=\"document.NewQuestion.QuestionType.value=7;submit()\" VALUE='Short Essay' /> ");
+			}
+			buf.append("</FORM><br/><br/>");
 		}
 		return buf.toString();
 	}
@@ -961,7 +975,7 @@ public class Poll extends HttpServlet {
 			buf.append(q.edit());
 			
 			buf.append("<INPUT TYPE=SUBMIT NAME=UserRequest VALUE=Preview />");
-			buf.append("</FORM><br/>");
+			buf.append("</FORM><br/><br/>");
 		} catch (Exception e) {
 			buf.append(e.toString());
 		}
@@ -1004,8 +1018,10 @@ public class Poll extends HttpServlet {
 			
 			buf.append("<FORM Action='/Poll' METHOD=POST>"
 					+ "<INPUT TYPE=HIDDEN NAME=sig VALUE='" + user.getTokenSignature() + "' />");
+			debug.append("e");
 			
 			buf.append(q.printAll());
+			debug.append("f");
 			
 			if (q.authorId==null) q.authorId="";
 			buf.append("<INPUT TYPE=HIDDEN NAME=AuthorId VALUE='" + q.authorId + "' />");
@@ -1034,7 +1050,7 @@ public class Poll extends HttpServlet {
 			buf.append(q.edit());
 			
 			buf.append("<INPUT TYPE=SUBMIT NAME=UserRequest VALUE=Preview />");
-			buf.append("</FORM>");
+			buf.append("</FORM><br/><br/>");
 		} catch (Exception e) {
 			buf.append("<br/>Error: " + e.getMessage()==null?e.toString():e.getMessage() + "<br/>" + debug.toString());
 		}
@@ -1129,6 +1145,8 @@ public class Poll extends HttpServlet {
 				+ "<OPTION VALUE=3" + (questionType==3?" SELECTED>":">") + "Select Multiple</OPTION>"
 				+ "<OPTION VALUE=4" + (questionType==4?" SELECTED>":">") + "Fill in word/phrase</OPTION>"
 				+ "<OPTION VALUE=5" + (questionType==5?" SELECTED>":">") + "Numeric</OPTION>"
+				+ "<OPTION VALUE=6" + (questionType==6?" SELECTED>":">") + "5-Star Rating</OPTION>"
+				+ "<OPTION VALUE=7" + (questionType==7?" SELECTED>":">") + "Short Essay</OPTION>"
 				+ "</SELECT>");
 		return buf.toString();
 	}

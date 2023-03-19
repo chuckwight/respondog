@@ -177,7 +177,7 @@ public class LTIRegistration extends HttpServlet {
 						+ "URL: " + request.getParameter("url") + "<br/>"
 						+ "LMS: " + request.getParameter("lms") + "<br/>"
 						+ debug.toString();
-				if (dynamicRegistration) sendEmail("ResponDog Administrator","chuck.wight@gmail.com","Dynamic Registration Error",message);
+				if (dynamicRegistration) sendEmail("ResponDog Administrator","admin@respondog.com","Dynamic Registration Error",message);
 			} catch (Exception e1) {
 				e1.printStackTrace();
 			}
@@ -618,7 +618,7 @@ public class LTIRegistration extends HttpServlet {
 		regJson.addProperty("scope", "https://purl.imsglobal.org/spec/lti-ags/scope/lineitem https://purl.imsglobal.org/spec/lti-ags/scope/lineitem.readonly https://purl.imsglobal.org/spec/lti-ags/scope/result.readonly https://purl.imsglobal.org/spec/lti-ags/scope/score https://purl.imsglobal.org/spec/lti-nrps/scope/contextmembership.readonly");
 		JsonObject ltiToolConfig = new JsonObject();
 		ltiToolConfig.addProperty("domain", domain);
-		ltiToolConfig.addProperty("description",  "ResponDog is an OER for engaging audiences.");
+		ltiToolConfig.addProperty("description",  "ResponDog helps you create audience response polls for posing quiz questions or gauging students' opinions.");
 		ltiToolConfig.addProperty("target_link_uri", iss);
 		JsonArray idTokenClaims = new JsonArray();
 		idTokenClaims.add("iss");
@@ -791,7 +791,7 @@ public class LTIRegistration extends HttpServlet {
 					+ "<li>Click 'Add an activity or resource'</li>"
 					+ "<li>Click 'External Tool'</li>"
 					+ "<li>Select ResponDog from preconfigured tools and click 'Select content'</li>"
-					+ "<li>Choose one or more ResponDog assignments, click 'Submit' and then 'Continue'</li>"
+					+ "<li>Click 'Continue'</li>"
 					+ "</ol>");
 			break;
 		case "canvas":
@@ -800,8 +800,8 @@ public class LTIRegistration extends HttpServlet {
 					+ "<li>Click the red '+ Assignment' button</li>"
 					+ "<li>For Submission Type select 'External Tool'</li>"
 					+ "<li>Click Find and select ResponDog from preconfigured tools</li>"
-					+ "<li>Choose a ResponDog assignment and topic, then click 'Create this assignment' and then 'Select'</li>"
-					+ "<li>Click 'Save' or 'Save and Publish'</li>"
+					+ "<li>Click 'Continue' in the popup window, then 'Select' in Canvas</li>"
+					+ "<li>Finish the assignment settings and choose 'Save' or 'Save and Publish'</li>"
 					+ "</ol>");
 			break;
 		default:
@@ -810,8 +810,8 @@ public class LTIRegistration extends HttpServlet {
 					+ "in general you should navigate to your course page and<ol>"
 					+ "<li>Add a new assignment, content or resource</li>"
 					+ "<li>Select ResponDog from a list of preconfigured tools</li>"
-					+ "<li>Select one or more ResponDog assignments to add</li>"
-					+ "<li>Enable grading. Recommended points is 10 for quizzes or homework, 100 for practice exams.</li>"
+					+ "<li>Click 'Continue' in the ResponDog popup window</li>"
+					+ "<li>Enable grading and choose the point value, if deasired.</li>"
 					+ "</ol>");	
 		}
 		buf.append(	"If you need assistance, contact us at admin@respondog.com");
@@ -873,15 +873,15 @@ public class LTIRegistration extends HttpServlet {
 		case "blackboard":
 			buf.append("To the Course Instructor:");
 			buf.append("<ol><li>Go to the course | Content | Build Content | ResponDog</li>"
-					+ "<li>Name: as appropriate (e.g., Quiz - Heat & Enthalpy)</li>"
+					+ "<li>Name: as appropriate (e.g., Class Poll)</li>"
 					+ "<li>Grading:"
-					+ "<ul><li>Enable Evaluation - Yes</li>"
-					+ " <li>Points - 10 for quiz or homework; 5 for video; 100 for practice exam</li>"
+					+ "<ul><li>Enable Evaluation - Yes or No</li>"
+					+ " <li>Points - as desired</li>"
 					+ " <li>Visible to Students - Yes</li>"
 					+ "</ul></li>"
 					+ "<li>Submit</li>"
 					+ "<li>Click the new assignment link to launch ResponDog</li>"
-					+ "<li>Choose the relevant assignment (e.g., Quiz on Heat & Enthalpy)</li>"
+					+ "<li>Click 'Continue'</li>"
 					+ "<li>Customize the assignment, if desired, using the highlighted link</li>"
 					+ "</ol>");
 			break;
@@ -890,7 +890,7 @@ public class LTIRegistration extends HttpServlet {
 					+ "<li>On your course page, turn editing on and click 'Add an activity or resource'</li>"
 					+ "<li>Click 'External Tool'</li>"
 					+ "<li>Select ResponDog from preconfigured tools and click 'Select content'</li>"
-					+ "<li>Choose one or more ResponDog assignments, click 'Submit' and then 'Continue'</li>"
+					+ "<li>Click 'Continue'</li>"
 					+ "</ol>");
 			break;
 		default:
@@ -899,8 +899,8 @@ public class LTIRegistration extends HttpServlet {
 					+ "in general you should navigate to your course page and<ol>"
 					+ "<li>Add a new assignment, content or resource</li>"
 					+ "<li>Select ResponDog from a list of preconfigured tools</li>"
-					+ "<li>Select one or more ResponDog assignments to add</li>"
-					+ "<li>Enable grading. Recommended points is 10 for quizzes or homework, 100 for practice exams.</li>"
+					+ "<li>Click 'Continue' in the ResponDog popup window</li>"
+					+ "<li>Enable grading, if desired.</li>"
 					+ "</ol>");	
 		}
 		buf.append("If you need additional assistance, please contact us at admin@respondog.com<br/>Thank you.");
