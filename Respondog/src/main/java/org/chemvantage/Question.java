@@ -417,7 +417,8 @@ public class Question implements Serializable, Cloneable {
 			buf.append("<span style='border: 1px solid black'>"
 					+ "<b>" + (this.hasACorrectAnswer()?quot2html(correctAnswer):"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;") + "</b>"
 					+ "</span>");
-			buf.append("&nbsp;" + tag + "<br/><br/>");
+			buf.append("&nbsp;" + tag + "<br/>"
+					+ (this.hasACorrectAnswer()?"Spelling: " + (strictSpelling?"strict":"lenient"):"") + "<br/><br/>");
 			break;
 		case 5: // Numeric Answer
 			buf.append(parseString(text) + "<br/>");
@@ -805,7 +806,7 @@ public class Question implements Serializable, Cloneable {
 				buf.append("<TEXTAREA name=QuestionTag rows=5 cols=60 wrap=soft>" 
 						+ amp2html(tag) + "</TEXTAREA><br/>");
 				buf.append("Scoring ignores upper/lower case and punctuation.<br/>"
-						+ "<label><input type=checkbox name=StrictSpelling value='" + strictSpelling + "' />Enforce strict spelling (otherwise slightly lenient)</label><br/><br/>");
+						+ "<label><input type=checkbox name=StrictSpelling value=true " + (this.strictSpelling?"CHECKED":"") + " />Enforce strict spelling (otherwise slightly lenient)</label><br/><br/>");
 				break;
 			case 5: // Numeric Answer
 				buf.append("Question Text:<br/><TEXTAREA name=QuestionText rows=5 cols=60 wrap=soft>" + amp2html(text) + "</TEXTAREA><br/>");

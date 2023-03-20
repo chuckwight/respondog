@@ -41,7 +41,7 @@ public class Assignment implements java.lang.Cloneable {
 	@Index	public	String lti_ags_lineitem_url;
 	@Index	Date valid;
 			String lti_nrps_context_memberships_url;
-			String title = "Class Poll";
+			String title = "Group Poll";
 			boolean pollIsClosed=true;
 			Date pollClosesAt = null;
 			List<Key<Question>> questionKeys = new ArrayList<Key<Question>>();

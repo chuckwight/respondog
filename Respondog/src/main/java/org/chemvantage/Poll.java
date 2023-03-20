@@ -190,6 +190,11 @@ public class Poll extends HttpServlet {
 				removeQuestion(user,a,request);
 				out.println(Subject.header() + editPage(user,a,request) + Subject.footer);
 				break;
+			case "Save New Title":
+				a.title = request.getParameter("AssignmentTitle");
+				ofy().save().entity(a).now();
+				out.println(Subject.header("ChemVantage Instructor Page") + instructorPage(user,a,request) + Subject.footer);
+			break;
 			case "View the Poll Results":
 				out.println(Subject.header() + resultsPage(user,a) + Subject.footer);
 				break;
@@ -215,22 +220,24 @@ public class Poll extends HttpServlet {
 	static String instructorPage(User user,Assignment a,HttpServletRequest request) {
 		StringBuffer buf = new StringBuffer(Subject.banner);
 		
-		buf.append("<h2>Welcome to the Class Poll</h2>");
+		buf.append("<h2>Presenter Page</h2>");
 		if (!user.isInstructor()) return "You must be an instructor to view this page.";
-		
 		if (a.questionKeys.size()==0) return editPage(user,a,request);
-		else {
-			buf.append("You may review and edit the questions for this poll by <a href=/Poll?UserRequest=EditPoll&sig=" + user.getTokenSignature() + ">clicking this link</a>.<br/><br/>");
-		}
 		
 		buf.append("This Poll assignment allows you to pose questions to your class and get real-time responses without the need for clicker devices. "
-				+ "Students will need a laptop, tablet or smartphone that is logged into your course LMS. The poll is useful for "
-				+ "posing quiz questions, gauging students' opinions, showing students how their answers compare to their classmates, "
-				+ "taking class attendance and discouraging tardiness."
+				+ "Participants will need a laptop, tablet or smartphone that is logged into your course LMS."
 				+ "<br/><br/>"
 				+ "When the poll is open, students can view the poll questions and submit responses.<br/>"
 				+ "When the poll is closed, responses are not accepted and students are provided a link to view the poll results."
 				+ "<br/><br/>");
+		
+		buf.append("<form method=post action=/Poll>"
+				+ "Title: <input type=text name=AssignmentTitle value='" + a.title + "' /> "
+				+ "<input type=hidden name=sig value=" + user.getTokenSignature() + " />"
+				+ "<input type=submit name=UserRequest value='Save New Title' />"
+				+ "</form><br/><br/>");
+		
+		buf.append("You may review and edit the questions for this poll by <a href=/Poll?UserRequest=EditPoll&sig=" + user.getTokenSignature() + ">clicking this link</a>.<br/><br/>");
 		
 		int nSubmissions = ofy().load().type(PollTransaction.class).filter("assignmentId",a.id).count();
 		boolean supportsMembership = a.lti_nrps_context_memberships_url != null;
@@ -246,7 +253,7 @@ public class Poll extends HttpServlet {
 			}
 		}
 		// If the poll is open, provide a quick way to close it while staying on this page
-		buf.append("<b>This class poll is currently " + (a.pollIsClosed?"closed.</b>":"open.</b> <form style='display:inline;' method=post action=/Poll >"
+		buf.append("<b>The poll is currently " + (a.pollIsClosed?"closed.</b>":"open.</b> <form style='display:inline;' method=post action=/Poll >"
 				+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
 				+ "<input name=UserRequest type=submit value='Close the Poll' /></form> <div id='timer0' style='display:inline;color:#EE0000'>&nbsp;</div><br/>") + "<br/>");
 
@@ -308,7 +315,7 @@ public class Poll extends HttpServlet {
 
 			StringBuffer buf = new StringBuffer();
 
-			buf.append("<h2>Class Poll</h2>");
+			buf.append("<h2>" + a.title + "</h2>");
 			buf.append("<div id='timer0' style='color: #EE0000'></div><br/>");
 
 			if (user.isInstructor()) {
@@ -801,7 +808,7 @@ public class Poll extends HttpServlet {
 		int nAuthoredQuestions = ofy().load().type(Question.class).filter("authorId",user.getId()).count();
 		
 		if (a.getQuestionKeys().size() == 0) {
-			buf.append("<h2>Welcome to ResponDog. Let's create your class poll.</h2>");
+			buf.append("<h2>Welcome to ResponDog. Let's create your group poll.</h2>");
 			if (nAuthoredQuestions==0)	{
 				List<Question> starterQuestions = ofy().load().type(Question.class).filter("authorId","https://respondog.com/starter").list();
 				String userId = user.getId();
@@ -809,11 +816,14 @@ public class Poll extends HttpServlet {
 					q.id = null;
 					q.authorId = userId;
 				}
-				ofy().save().entities(starterQuestions).now();
-				for (Question q : starterQuestions) a.questionKeys.add(Key.create(q));
-				ofy().save().entity(a).now();
-				buf.append("We've included a short list of question items below to get you started. Use the controls "
-						+ "to change the order, remove them, edit or delete them entirely. They are yours.<br/><br/>");
+				if (starterQuestions.size()>0) {
+					ofy().save().entities(starterQuestions).now();
+					for (Question q : starterQuestions) a.questionKeys.add(Key.create(q));
+					ofy().save().entity(a).now();
+					nAuthoredQuestions = starterQuestions.size();
+					buf.append("We've included a short list of question items below to get you started. Use the controls "
+							+ "to change the order, remove them, edit or delete them entirely. They are yours.<br/><br/>");
+				}
 			}
 		} else buf.append("<br/>");
 
@@ -869,6 +879,14 @@ public class Poll extends HttpServlet {
 		buf.append("These are questions that you have created or edited. Select any of them to include<br/>"
 				+ "in the current poll. If you don't see any you like, you can "
 				+ "<a href=/Poll?UserRequest=NewQuestion&sig=" + user.getTokenSignature() + ">create a new one</a>.<br/><br/>");
+		
+		List<Key<Question>> authoredQuestionKeys = ofy().load().type(Question.class).filter("authorId",user.getId()).keys().list();
+		if (a.questionKeys.containsAll(authoredQuestionKeys)) {
+			buf.append("It looks like all of the questions that you have authored, including any starter questions, are already "
+					+ "included in the current poll. <a href=/Poll?UserRequest=EditPoll&sig=" + user.getTokenSignature() + ">"
+					+ "Return to the Edit Page</a>");
+			return buf.toString();
+		}
 		
 		List<Question> authoredQuestions = ofy().load().type(Question.class).filter("authorId",user.getId()).list();
 		 
@@ -1150,6 +1168,7 @@ public class Poll extends HttpServlet {
 		double requiredPrecision = 1.; // percent
 		int significantFigures = 0;
 		boolean scrambleChoices = false;
+		boolean strictSpelling = false;
 		int pointValue = 1;
 		try {
 			pointValue = Integer.parseInt(request.getParameter("PointValue"));
@@ -1165,6 +1184,10 @@ public class Poll extends HttpServlet {
 		}
 		try {
 			scrambleChoices = Boolean.parseBoolean(request.getParameter("ScrambleChoices"));
+		} catch (Exception e) {
+		}
+		try {
+			strictSpelling = Boolean.parseBoolean(request.getParameter("StrictSpelling"));
 		} catch (Exception e) {
 		}
 		String correctAnswer = "";
@@ -1192,7 +1215,7 @@ public class Poll extends HttpServlet {
 		q.solution = request.getParameter("Solution");
 		q.notes = "";
 		q.scrambleChoices = scrambleChoices;
-		q.strictSpelling = Boolean.parseBoolean(request.getParameter("StrictSpelling"));
+		q.strictSpelling = strictSpelling;
 		q.authorId = request.getParameter("AuthorId");
 		q.editorId = request.getParameter("EditorId");
 		q.validateFields();
