@@ -235,7 +235,7 @@ public class Poll extends HttpServlet {
 				+ "Title: <input type=text name=AssignmentTitle value='" + a.title + "' /> "
 				+ "<input type=hidden name=sig value=" + user.getTokenSignature() + " />"
 				+ "<input type=submit name=UserRequest value='Save New Title' />"
-				+ "</form><br/><br/>");
+				+ "</form><br/>");
 		
 		buf.append("You may review and edit the questions for this poll by <a href=/Poll?UserRequest=EditPoll&sig=" + user.getTokenSignature() + ">clicking this link</a>.<br/><br/>");
 		
