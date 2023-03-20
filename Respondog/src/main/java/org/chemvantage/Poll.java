@@ -60,7 +60,9 @@ public class Poll extends HttpServlet {
 			Assignment a = ofy().load().type(Assignment.class).id(user.getAssignmentId()).now();
 			
 			switch (userRequest) {
+			case "Quit":
 			case "EditPoll":
+			case "Return to the edit page":
 				out.println(Subject.header() + editPage(user,a,request) + Subject.footer);
 				break;
 			case "NewQuestion":
@@ -161,6 +163,14 @@ public class Poll extends HttpServlet {
 				ofy().save().entity(q).now();
 				out.println(Subject.header() + editPage(user,a,request) + Subject.footer);
 				break;
+			case "Delete Question":
+				try {
+					Key<Question> k = Key.create(Question.class,Long.parseLong(request.getParameter("QuestionId")));
+					ofy().delete().key(k).now();
+					if (a.questionKeys.remove(k)) ofy().save().entity(a).now();
+				} catch (Exception e) {}
+				out.println(Subject.header() + editPage(user,a,request) + Subject.footer);
+				break;
 			case "SubmitResponses":
 				PollTransaction pt = submitResponses(user,a,request);
 				if (pt!=null && pt.completed!=null) {
@@ -193,6 +203,7 @@ public class Poll extends HttpServlet {
 				break;
 			case "Preview":
 			case "Quit":
+			default:
 				doGet(request,response);
 				break;
 			}
@@ -577,7 +588,7 @@ public class Poll extends HttpServlet {
 				+ "<div style='display: table-cell'></div>"  // column for question number
 				+ "<div style='display: table-cell'><h3>Questions</h3></div>"
 				+ "<div style='display: table-cell'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>"  // horizontal buffer
-				+ "<div style='display: table-cell'><h3>Responses</h3></div>"
+				+ "<div style='display: table-cell'><h3>Group Responses</h3></div>"
 				+ "</div>");  // end of header row
 		debug.append("c.");
 		
@@ -787,17 +798,30 @@ public class Poll extends HttpServlet {
 		StringBuffer buf = new StringBuffer(Subject.banner);
 		if (!user.isInstructor()) return "<h1>Sorry, you are not authorized to view this page.</h1>";
 
-		if (a.getQuestionKeys().size() == 0) {
-			buf.append("<h2>Welcome to ResponDog. Let's create your class poll.</h2>");
-		} else buf.append("<br/>");
-
 		int nAuthoredQuestions = ofy().load().type(Question.class).filter("authorId",user.getId()).count();
 		
+		if (a.getQuestionKeys().size() == 0) {
+			buf.append("<h2>Welcome to ResponDog. Let's create your class poll.</h2>");
+			if (nAuthoredQuestions==0)	{
+				List<Question> starterQuestions = ofy().load().type(Question.class).filter("authorId","https://respondog.com/starter").list();
+				String userId = user.getId();
+				for (Question q : starterQuestions) {
+					q.id = null;
+					q.authorId = userId;
+				}
+				ofy().save().entities(starterQuestions).now();
+				for (Question q : starterQuestions) a.questionKeys.add(Key.create(q));
+				ofy().save().entity(a).now();
+				buf.append("We've included a short list of question items below to get you started. Use the controls "
+						+ "to change the order, remove them, edit or delete them entirely. They are yours.<br/><br/>");
+			}
+		} else buf.append("<br/>");
+
 		// Display a selector to create a new question or display candidate questions authored by this user:
 		buf.append("<form method=get action='/Poll'>"
 				+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
 				+ "<input type=submit name=UserRequest value='Create a new question' /> or "
-				+ "<input type=submit name=UserRequest value='Add questions that I previously authored'" + (nAuthoredQuestions==0?"disabled":"") + " /> or "
+				+ "<input type=submit name=UserRequest value='Add questions that I previously authored'" + (nAuthoredQuestions==a.questionKeys.size()?"disabled":"") + " /> or "
 				+ "<input type=submit name=UserRequest value='Done editing' />"
 				+ "</form>");
 
@@ -810,7 +834,7 @@ public class Poll extends HttpServlet {
 				Question q = currentQuestions.get(k);
 				if (q==null) { // somehow the question has been deleted from the database
 					a.questionKeys.remove(k);
-					ofy().save().entity(a);
+					ofy().save().entity(a).now();
 					continue;
 				}
 				q.setParameters();
@@ -840,9 +864,14 @@ public class Poll extends HttpServlet {
 	}
 	
 	private static String selectAuthoredQuestions(User user, Assignment a, HttpServletRequest request) {
-		StringBuffer buf = new StringBuffer();
-		List<Question> authoredQuestions = ofy().load().type(Question.class).filter("authorId",user.getId()).list();
+		StringBuffer buf = new StringBuffer(Subject.banner);
+		buf.append("<h2>My Poll Question Item Bank</h2>");
+		buf.append("These are questions that you have created or edited. Select any of them to include<br/>"
+				+ "in the current poll. If you don't see any you like, you can "
+				+ "<a href=/Poll?UserRequest=NewQuestion&sig=" + user.getTokenSignature() + ">create a new one</a>.<br/><br/>");
 		
+		List<Question> authoredQuestions = ofy().load().type(Question.class).filter("authorId",user.getId()).list();
+		 
 		buf.append("<form method=post action='/Poll'><input type=hidden name=sig value='" + user.getTokenSignature() + "' />");
 		buf.append("<input type=hidden name=UserRequest value='AddQuestions' />");
 		buf.append("<input type=submit value='Include the selected items below in the poll' /> "
@@ -982,8 +1011,8 @@ public class Poll extends HttpServlet {
 			if (q.requiresParser()) q.setParameters();
 			buf.append("<h3>Current Question</h3>");
 			//buf.append("Assignment Type: Poll<br>");
-			buf.append("Author: " + q.authorId + "<br>");
-			buf.append("Editor: " + q.editorId + "<br><br/>");
+			//buf.append("Author: " + q.authorId + "<br>");
+			//buf.append("Editor: " + q.editorId + "<br><br/>");
 			
 			buf.append("<FORM Action=/Poll METHOD=POST>"
 					+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />");
@@ -995,7 +1024,7 @@ public class Poll extends HttpServlet {
 			buf.append("<INPUT TYPE=HIDDEN NAME=AuthorId VALUE='" + q.authorId + "' />");
 			buf.append("<INPUT TYPE=HIDDEN NAME=EditorId VALUE='" + q.editorId + "' />");
 			buf.append("<INPUT TYPE=HIDDEN NAME=QuestionId VALUE='" + questionId + "' />");
-			buf.append("<INPUT TYPE=SUBMIT NAME=UserRequest VALUE='Delete Question' />");
+			buf.append("<INPUT TYPE=SUBMIT NAME=UserRequest VALUE='Delete Question' onclick='return confirm(\"Delete this item permanently?\");' />");
 			buf.append("<INPUT TYPE=SUBMIT NAME=UserRequest VALUE='Quit' />");
 			
 			buf.append("<hr><h3>Edit This Question</h3>");
@@ -1046,8 +1075,8 @@ public class Poll extends HttpServlet {
 			
 			q.assignmentType = "Poll";
 				
-			buf.append("Author: " + q.authorId + "<br />");
-			buf.append("Editor: " + user.getId() + "<p>");
+			//buf.append("Author: " + q.authorId + "<br />");
+			//buf.append("Editor: " + user.getId() + "<p>");
 			
 			buf.append("<FORM Action='/Poll' METHOD=POST>"
 					+ "<INPUT TYPE=HIDDEN NAME=sig VALUE='" + user.getTokenSignature() + "' />");

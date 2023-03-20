@@ -182,6 +182,6 @@ public class Subject {
 			+ "<a href='/welcome.html' style='text-decoration: none;'>"
 			+ "<img src=/images/respondog.png height=40px width=40px alt='ResponDog Logo' />"
 			+ "	<span style='color: brown; font-size: 2em; font-weight: bold;'>ResponDog</span><br/></a>"
-			+ "Your best friend for audience engagement!<br/>"
+			+ "Your best friend for audience engagement<br/>"
 			+ "	</div>\n";
 }

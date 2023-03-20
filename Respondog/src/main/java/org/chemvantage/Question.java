@@ -300,7 +300,7 @@ public class Question implements Serializable, Cloneable {
 		case 4: // Fill-in-the-Word
 			buf.append(text);
 			buf.append("<br/>");
-			buf.append("<span style='color:#EE0000;font-size: small;'>Enter the correct word or phrase:</span><br/>");
+			buf.append("<span style='color:#EE0000;font-size: small;'>Enter " + (correctAnswer.isEmpty()?"a":"the correct") + " word or phrase:</span><br/>");
 			buf.append("<label><input id=" + this.id + " type=text name=" + this.id + " value='" + quot2html(studentAnswer) + "' placeholder='" + placeholder + "' />");
 			buf.append("&nbsp;" + tag + "</label><br/><br/>");
 			break;
@@ -413,7 +413,7 @@ public class Question implements Serializable, Cloneable {
 			break;
 		case 4: // Fill-in-the-Word
 			buf.append(text + "<br/>");
-			buf.append("<span style='color:#EE0000;font-size: small;'>Enter the correct word or phrase:</span><br/>");
+			buf.append("<span style='color:#EE0000;font-size: small;'>Enter " + (correctAnswer.isEmpty()?"a":"the correct") + " word or phrase:</span><br/>");
 			buf.append("<span style='border: 1px solid black'>"
 					+ "<b>" + (this.hasACorrectAnswer()?quot2html(correctAnswer):"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;") + "</b>"
 					+ "</span>");
@@ -525,7 +525,7 @@ public class Question implements Serializable, Cloneable {
 			break;
 		case 4: // Fill-in-the-Word
 			buf.append(text + "<br/>");
-			buf.append("<span style='color:#EE0000;font-size: small;'>Enter the correct word or phrase:</span><br/>");
+			buf.append("<span style='color:#EE0000;font-size: small;'>Enter " + (correctAnswer.isEmpty()?"a":"the correct") + " word or phrase:</span><br/>");
 			String[] answers = correctAnswer.split(",");
 			buf.append("<span style='border: 1px solid black'>"
 					+ (showDetails && correctAnswer != null && !correctAnswer.isEmpty()?"<b>" + quot2html(answers[0]) + "</b>":"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;")
@@ -562,7 +562,7 @@ public class Question implements Serializable, Cloneable {
 		}
 		
 		buf.append("<br/>");
-		if (studentAnswer==null || studentAnswer.isEmpty()) buf.append("<b>No answer was submitted for this question item.</b><p></p>");
+		if (studentAnswer==null || studentAnswer.isEmpty()) buf.append("<b>No response was submitted for this question.</b><p></p>");
 		else {
 			switch (getQuestionType()) {
 			case 6: buf.append("<b>The answer submitted was:</b> " + studentAnswer + " stars<br/>");
@@ -663,7 +663,7 @@ public class Question implements Serializable, Cloneable {
 			break;
 		case 4: // Fill-in-the-Word
 			buf.append(text + "<br/>");
-			buf.append("<span style='color:#EE0000;font-size: small;'>Enter the correct word or phrase:</span><br/>");
+			buf.append("<span style='color:#EE0000;font-size: small;'>Enter " + (correctAnswer.isEmpty()?"a":"the correct") + " word or phrase:</span><br/>");
 			String[] answers = correctAnswer.split(",");
 			buf.append("<span style='border: 1px solid black'>"
 					+ "<b>" + quot2html(answers[0]) + "</b>"
@@ -798,7 +798,7 @@ public class Question implements Serializable, Cloneable {
 				break;
 			case 4: // Fill-in-the-Word
 				buf.append("Question Text:<br/><TEXTAREA name=QuestionText rows=5 cols=50 wrap=soft>" + amp2html(text) + "</TEXTAREA><br/>");
-				buf.append("<span style='color:#EE0000;font-size: small;'>Enter the correct word or phrase.<br/>"
+				buf.append("<span style='color:#EE0000;font-size: small;'>Enter " + (correctAnswer.isEmpty()?"a":"the correct") + " word or phrase.<br/>"
 						+ "Multiple correct answers can be entered as a comma-separated list.</span><br/>");
 				buf.append("<input type=text name=CorrectAnswer value=\"" 
 						+ quot2html(amp2html(correctAnswer)) + "\"'/><br/>");

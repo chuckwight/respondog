@@ -85,7 +85,7 @@ Please tell us about your school, business or organization:<br/>
 Pricing:
   <ul>
 	<li>ResponDog is completely free for educational use at nonprofit schools and universities.</li>
-	<li>Commercial and personal accounts are $19/month for each instructor/presenter after a 30-day free trial period.</li>
+	<li>Commercial and personal presenter accounts are just $19/month after a 30-day free trial period.</li>
 	<li>Poll participants are always free.</li>
   </ul>
 
