@@ -1001,8 +1001,17 @@ public class Poll extends HttpServlet {
 					+ "</FORM><br/><br/>");
 		} catch (Exception e) {
 			buf.append("<h2>Create A New Question</h2>");
-			buf.append("<FORM NAME=NewQuestion METHOD=GET ACTION='/Poll'>");
-			buf.append("Select one of the following question types:<br />"
+			buf.append("Select one of the following question types:<br />");
+			buf.append("<div style='text-align:center'>"
+					+ "<a href=/Poll?UserRequest=NewQuestion&QuestionType=1&sig=" + user.getTokenSignature() + "><img height=128 width=128 src=/images/multiple_choice.png alt='multiple_choice'></a> "
+					+ "<a href=/Poll?UserRequest=NewQuestion&QuestionType=3&sig=" + user.getTokenSignature() + "><img height=128 width=128 src=/images/checkbox.png alt='checkbox'></a> "
+					+ "<a href=/Poll?UserRequest=NewQuestion&QuestionType=2&sig=" + user.getTokenSignature() + "><img height=128 width=128 src=/images/true_false.png alt='true_false'></a> "
+					+ "<a href=/Poll?UserRequest=NewQuestion&QuestionType=5&sig=" + user.getTokenSignature() + "><img height=128 width=128 src=/images/numeric.png alt='numeric'></a><br/>"
+					+ "<a href=/Poll?UserRequest=NewQuestion&QuestionType=6&sig=" + user.getTokenSignature() + "><img height=128 width=128 src=/images/five_stars.png alt='five_stars'></a> "
+					+ "<a href=/Poll?UserRequest=NewQuestion&QuestionType=4&sig=" + user.getTokenSignature() + "><img height=128 width=128 src=/images/fill_in_blank.png alt='fill_in_blank'></a> "
+					+ "<a href=/Poll?UserRequest=NewQuestion&QuestionType=7&sig=" + user.getTokenSignature() + "><img height=128 width=128 src=/images/short_essay.png alt='short_essay'></a>"
+					+ "</div><br/><br/>");
+/*			
 					+ "<INPUT TYPE=HIDDEN NAME=sig VALUE='" + user.getTokenSignature() + "' />"
 					+ "<INPUT TYPE=HIDDEN NAME=UserRequest VALUE=NewQuestion />"
 					+ "<INPUT TYPE=HIDDEN NAME=QuestionType />"
@@ -1014,6 +1023,7 @@ public class Poll extends HttpServlet {
 					+ "<INPUT TYPE=BUTTON onCLick=\"document.NewQuestion.QuestionType.value=6;submit()\" VALUE='5-Star Rating' /> "
 					+ "<INPUT TYPE=BUTTON onCLick=\"document.NewQuestion.QuestionType.value=7;submit()\" VALUE='Short Essay' /> ");
 			buf.append("</FORM><br/><br/>");
+*/
 		}
 		return buf.toString();
 	}
