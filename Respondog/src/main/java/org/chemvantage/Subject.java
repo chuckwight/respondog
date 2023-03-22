@@ -32,6 +32,8 @@ public class Subject {
 	@Id Long id;
 	private String title;
 	private String HMAC256Secret;
+	private String reCaptchaSecret;
+	private String reCaptchaSiteKey;
 	private String salt;
 	private String announcement;
 	private int nStarReports;
@@ -48,6 +50,8 @@ public class Subject {
 			s.id = 1L;
 			s.title = "ResponDog";
 			s.HMAC256Secret = "ChangeMeInTheDataStoreManuallyForYourProtection";
+			s.reCaptchaSecret = "changeMe";
+			s.reCaptchaSiteKey = "changeMe";
 			s.salt = "ResponDogIsTheSaltOfTheEarth";
 			ofy().save().entity(s);
 		} catch (Exception e) {  // ofy() not ready
@@ -68,7 +72,17 @@ public class Subject {
 		return s.HMAC256Secret; 
 	}
 	
-	static String getSalt() { 
+	static String getReCaptchaSecret() {
+		if (s==null) refresh();
+		return s.reCaptchaSecret;
+	}
+	
+	public static String getReCaptchaSiteKey() {
+		if (s==null) refresh();
+		return s.reCaptchaSiteKey;
+	}
+	
+	String getSalt() { 
 		if (s==null) refresh();
 		return s.salt; 
 	}

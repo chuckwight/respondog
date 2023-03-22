@@ -92,7 +92,7 @@ Pricing:
 <label><input type=checkbox name=AcceptResponDogTOS value=true <%= ((AcceptResponDogTOS!=null && AcceptResponDogTOS.equals("true"))?"checked":"") %>/>Accept the <a href=/about.html#terms target=_blank aria-label='opens new tab'>ResponDog Terms of Service</a></label><br/><br/>
 
 
-<div class='g-recaptcha' data-sitekey='6LdOGfYkAAAAANUZ9QylnH_ICV3XLZA6qhlkQP0C' aria-label='Google Recaptcha'></div><br/><br/>
+<div class='g-recaptcha' data-sitekey='<%= Subject.getReCaptchaSiteKey() %>' aria-label='Google Recaptcha'></div><br/><br/>
 
 <input type=submit value='Submit Registration'/>
 

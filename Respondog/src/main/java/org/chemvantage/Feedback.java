@@ -161,7 +161,7 @@ public class Feedback extends HttpServlet {
 		buf.append("<label id=cbox style='visibility:hidden'>Email: <input type=text size=50 placeholder=' optional, if you want a response to your comment' name=Email></label><p>");
 		
 		// If the user is anonymous, insert the Google reCaptcha tool (version 2) on the page
-		if (user.isAnonymous()) buf.append("<div class='g-recaptcha' data-sitekey='6LdOGfYkAAAAANUZ9QylnH_ICV3XLZA6qhlkQP0C' aria-label='Google Recaptcha'></div><br/><br/>");
+		if (user.isAnonymous()) buf.append("<div class='g-recaptcha' data-sitekey=" + Subject.getReCaptchaSiteKey() + " aria-label='Google Recaptcha'></div><br/><br/>");
 
 		buf.append("<INPUT TYPE=SUBMIT NAME=UserRequest VALUE='Submit Feedback'>"
 				+ "<INPUT TYPE=RESET VALUE='Clear Form' "
@@ -235,7 +235,7 @@ public class Feedback extends HttpServlet {
 		BufferedReader reader = null;
 		JsonObject captchaResponse = null;
 		try {
-			String queryString = "secret=6LdOGfYkAAAAAH98q6K0TtDCw76Y5vqZnrRFO4-7&response=" 
+			String queryString = "secret=" + Subject.getReCaptchaSecret() + "&response=" 
 					+ request.getParameter("g-recaptcha-response") + "&remoteip=" + request.getRemoteAddr();
 			URL u = new URL("https://www.google.com/recaptcha/api/siteverify");
 			HttpURLConnection uc = (HttpURLConnection) u.openConnection();
