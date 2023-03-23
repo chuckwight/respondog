@@ -49,7 +49,10 @@ public class LTIRequest extends HttpServlet {
 		
 		String id_token = request.getParameter("id_token");
 		String state = request.getParameter("state");
-		if (id_token==null && state==null) response.sendRedirect("/welcome.html");
+		if (id_token==null && state==null) {
+			response.sendRedirect("/welcome.html");
+			return;
+		}
 		
 		try {
 			if (id_token==null) throw new Exception("id_token was missing");  
