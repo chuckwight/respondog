@@ -41,7 +41,7 @@ import javax.servlet.http.HttpServletResponse;
 import com.google.appengine.api.taskqueue.QueueFactory;
 import com.googlecode.objectify.Key;
 
-@WebServlet("/Poll")
+@WebServlet(urlPatterns={"/Poll","/poll"})
 public class Poll extends HttpServlet {
 	private static final long serialVersionUID = 137L;
 	
@@ -224,11 +224,15 @@ public class Poll extends HttpServlet {
 		if (!user.isInstructor()) return "You must be an instructor to view this page.";
 		if (a.questionKeys.size()==0) return editPage(user,a,request);
 		
-		buf.append("This Poll assignment allows you to pose questions to your class and get real-time responses without the need for clicker devices. "
-				+ "Participants will need a laptop, tablet or smartphone that is logged into your course LMS."
+		buf.append("This Poll assignment allows you to pose questions to your class and get<br/> "
+				+ "real-time responses without the need for clicker devices. Participants will<br/>"
+				+ "need a laptop, tablet or smartphone. Participants who are logged into your<br/>"
+				+ "LMS can get scores returned to the LMS grade book. If you have guests with<br/>"
+				+ "no LMS login, please instruct them to go to https://respondog.com and enter<br/>"
+				+ "the guest code code: <b>" + Long.toHexString(a.id) + "</b>"
 				+ "<br/><br/>"
-				+ "When the poll is open, students can view the poll questions and submit responses.<br/>"
-				+ "When the poll is closed, responses are not accepted and students are provided a link to view the poll results."
+				+ "When the poll is open, participants can read the questions and submit responses.<br/>"
+				+ "When the poll is closed, participants can view the poll results."
 				+ "<br/><br/>");
 		
 		buf.append("<form method=post action=/Poll>"
@@ -246,7 +250,7 @@ public class Poll extends HttpServlet {
 			buf.append("There " + (nSubmissions==1?"is 1":"are " + nSubmissions) + " completed submission" + (nSubmissions>1?"s":"") + " for this poll. ");
 			if (a.pollIsClosed) {
 				buf.append("<a href=/Poll?UserRequest=ViewResults&sig=" + user.getTokenSignature() + ">View the poll results</a> "
-						+ (supportsMembership?"or <a href='/Poll?UserRequest=ShowSummary&sig=" + user.getTokenSignature() + "'>review your students' scores</a>":"") 
+						+ (supportsMembership?"or <a href='/Poll?UserRequest=ShowSummary&sig=" + user.getTokenSignature() + "'>review your participants' scores</a>":"") 
 						+ "<br/><br/>");
 			} else {
 				buf.append("<a href=/Poll?sig=" + user.getTokenSignature() + ">Update</a><br/><br/>");
@@ -286,7 +290,7 @@ public class Poll extends HttpServlet {
 		buf.append(Subject.banner + "<h3>The poll is closed.</h3>");
 		
 		if (user.isInstructor()) {
-			buf.append("When ready, open the poll so you and your students can view the poll questions.<br/><br/>");
+			buf.append("When ready, open the poll so you and your participants can view the poll questions.<br/><br/>");
 			buf.append("Set a time limit for this poll (in minutes): "
 					+ "<form style=display:inline method=post action=/Poll ><input type=text size=8 name=TimeLimit placeholder=unlimited />"
 					+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
@@ -319,7 +323,7 @@ public class Poll extends HttpServlet {
 			buf.append("<div id='timer0' style='color: #EE0000'></div><br/>");
 
 			if (user.isInstructor()) {
-				buf.append("<b>Please tell your students that the poll is now open so they can view the poll questions.</b><br/>");
+				buf.append("<b>Please tell your audience that the poll is now open so they can view the poll questions.</b><br/>");
 
 				if (a.pollClosesAt!=null) buf.append("The poll will close automatically when the timer reaches zero.<br/>");
 
@@ -531,7 +535,7 @@ public class Poll extends HttpServlet {
 		
 		buf.append("<h2>Poll Results</h2>");
 		if (user.isInstructor() && forUserHashedId==null) {
-			if (a.pollIsClosed) buf.append("<b>Be sure to tell your students that the poll is now closed</b> and to click the button to view the poll results.<br/>");
+			if (a.pollIsClosed) buf.append("<b>Be sure to tell your audience that the poll is now closed</b> and to click the button to view the poll results.<br/>");
 			else buf.append("The poll is still open. ");
 			buf.append("You can <a href=/Poll?sig=" + user.getTokenSignature() + ">return to the instructor page</a> at any time.<br/><br/> ");
 		}
@@ -969,10 +973,10 @@ public class Poll extends HttpServlet {
 			case (5): 
 				buf.append("<h3>New Numeric Question</h3>");
 				buf.append("Fill in the question text in the upper textarea box and "
-					+ "the correct numeric answer below, or leave blank to ask an opinion. Indicate the required precision "
-					+ "of the student's response in percent (default = 1%). Use the bottom "
+					+ "the correct numeric answer below, or leave blank to ask an opinion. Indicate the "
+					+ "required precision of the response in percent (default = 1%). Use the bottom "
 					+ "textarea box to finish the question text and/or to indicate the "
-					+ "expected dimensions or units of the student's answer."); 
+					+ "expected dimensions or units of the answer."); 
 				break;
 			case (6):
 				buf.append("<h3>New 5-Star Rating Question</h3>");

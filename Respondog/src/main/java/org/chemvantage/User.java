@@ -54,11 +54,8 @@ public class User {
  * 			- hashedId value to be stored with Transaction, Score and Response entities
  */
 			
-	User() {  // constructor for new anonymous user; expires in 90 minutes
-		this(new Date().getTime() + 5400000L);
-	}
-	
-	User(long millis) {  // constructor for continuing anonymous user; expires at new Date(millis)
+	User() {  // constructor for continuing anonymous user; expires in 90 minutes
+		long millis = new Date().getTime() + 5400000L;
 		sig = encode(millis);
 		encryptedId = "anonymous" + String.valueOf(millis).hashCode();
 		hashedId = Subject.hashId(encryptedId);
@@ -94,13 +91,13 @@ public class User {
     		}
     		return user;
     	} catch (Exception e) {}
-    	
+/*    	
     	try {  // try to validate an anonymous user
     		Date exp = new Date(encode(Long.parseLong(sig,16)));
     		Date aMonthFromNow = new Date(now.getTime() + 2678400000L);
     		if (exp.after(now) && exp.before(aMonthFromNow)) return new User(exp.getTime());
     	} catch (Exception e) {}
-
+*/
     	return null;   	
 	}
     
@@ -134,8 +131,7 @@ public class User {
 	}
 
 	public String getId() {   // public method to support JSP files to receive unhashed userId value
-		if (this.isAnonymous()) return encryptedId;
-		else return decryptId(encryptedId,sig);
+		return decryptId(encryptedId,sig);
 	}
 	
 	public String getHashedId() {  // public method to support JSP files to retrieve hashed userId value
@@ -147,7 +143,7 @@ public class User {
 	}
 
 	public boolean isAnonymous() {
-		return encryptedId.startsWith("anonymous");
+		return encryptedId.contains("anonymous");
 	}
 
 	boolean isChemVantageAdmin() {
