@@ -44,7 +44,9 @@ public class Assignment implements java.lang.Cloneable {
 			String title = "Group Poll";
 			boolean pollIsClosed=true;
 			Date pollClosesAt = null;
+			Integer questionNumber;
 			List<Key<Question>> questionKeys = new ArrayList<Key<Question>>();
+			List<Integer> timeAllowed = new ArrayList<Integer>();  // time for each question in seconds
 
 	Assignment() {}
 

@@ -147,7 +147,7 @@ public class Subject {
 				+ "<link rel='icon' type='image/vnd.microsoft.icon' href='/images/favicon.ico' />\n"
 				+ "<title>" + (title==null || title.isEmpty()?"ResponDog":title) + "</title>\n"
 				+ "</head>\n"
-				+ "<body style='padding: 10px; font-family: Calibri,Arial,sans-serif; background-color: white; color: black;'>\n"
+				+ "<body style='padding: 10px; font-family: Calibri,Arial,sans-serif; background-color: white; color: black; max-width: 767px'>\n"
 				+ ((announcement==null || announcement.isEmpty())?"":"<FONT style='color: #EE0000'>" + announcement + "</FONT><br/>\n");
 	}
 	

@@ -125,20 +125,25 @@ public class Poll extends HttpServlet {
 			Assignment a = ofy().load().type(Assignment.class).id(user.getAssignmentId()).now();
 			
 			switch (userRequest) {
-			case "Close the Poll":
-				if (!user.isInstructor()) break;
-				a.pollIsClosed = true;
-				ofy().save().entity(a).now();
-				if ("InstructorPage".equals(request.getParameter("Destination"))) out.println(Subject.header() + instructorPage(user,a,request) + Subject.footer);
-				else out.println(Subject.header() + resultsPage(user,a) + Subject.footer);
+			case "ShowResults":
+				if (user.isInstructor()) {
+					a.pollIsClosed = true;
+					ofy().save().entity(a).now();
+				}
+				out.println(Subject.header() + resultsPage(user,a) + Subject.footer);
 				break;
-			case "Open the Poll":
+			case "NextQuestion":
 				if (!user.isInstructor()) break;
-				try { a.pollClosesAt = new Date(new Date().getTime() + Long.parseLong(request.getParameter("TimeLimit"))*60000L); } catch (Exception e) { a.pollClosesAt = null; }
+				a.questionNumber = 0;
+				try {
+					a.questionNumber = Integer.parseInt(request.getParameter("QuestionNumber"));
+					a.pollClosesAt = new Date(new Date().getTime() + a.timeAllowed.get(a.questionNumber)*60000L);
+				} catch (Exception e) { 
+					a.pollClosesAt = null; 
+				}
 				a.pollIsClosed = false;
 				ofy().save().entity(a).now();
-				if ("InstructorPage".equals(request.getParameter("Destination"))) out.println(Subject.header() + instructorPage(user,a,request) + Subject.footer);
-				else out.println(Subject.header() + showPollQuestions(user,a) + Subject.footer);
+				out.println(Subject.header() + showPollQuestions(user,a) + Subject.footer);
 				break;
 			case "Reset":
 				if (!user.isInstructor()) break;
@@ -223,25 +228,22 @@ public class Poll extends HttpServlet {
 		buf.append("<h2>Presenter Page</h2>");
 		if (!user.isInstructor()) return "You must be an instructor to view this page.";
 		if (a.questionKeys.size()==0) return editPage(user,a,request);
+		String guestCode = Long.toHexString(a.id);
+		while (guestCode.lastIndexOf('0')==guestCode.length()-1) guestCode = guestCode.substring(0,guestCode.length()-1); // trims trailing zeros from hex string
 		
-		buf.append("This Poll assignment allows you to pose questions to your class and get<br/> "
-				+ "real-time responses without the need for clicker devices. Participants will<br/>"
-				+ "need a laptop, tablet or smartphone. Participants who are logged into your<br/>"
-				+ "LMS can get scores returned to the LMS grade book. If you have guests with<br/>"
-				+ "no LMS login, please instruct them to go to https://respondog.com and enter<br/>"
-				+ "the guest code code: <b>" + Long.toHexString(a.id) + "</b>"
-				+ "<br/><br/>"
-				+ "When the poll is open, participants can read the questions and submit responses.<br/>"
-				+ "When the poll is closed, participants can view the poll results."
-				+ "<br/><br/>");
+		buf.append("This Poll assignment allows you to pose questions to your class and get real-time responses. Participants will need a laptop, "
+				+ "tablet or smartphone. Participants who are logged into your LMS can get scores returned to the LMS grade book. If you have guests "
+				+ "without an LMS login, please instruct them to go to https://respondog.com and enter "
+				+ "<a href=# onclick=document.getElementById('guestcode').style.display='inline' >the guest code for this poll</a>.<br/>"
+				+ "<span id=guestcode style='display:none' ><h2>The guest code for this poll is " + guestCode + "</h2></span>");
 		
-		buf.append("<form method=post action=/Poll>"
+		buf.append("<br/><form method=post action=/Poll>"
 				+ "Title: <input type=text name=AssignmentTitle value='" + a.title + "' /> "
 				+ "<input type=hidden name=sig value=" + user.getTokenSignature() + " />"
 				+ "<input type=submit name=UserRequest value='Save New Title' />"
 				+ "</form><br/>");
 		
-		buf.append("You may review and edit the questions for this poll by <a href=/Poll?UserRequest=EditPoll&sig=" + user.getTokenSignature() + ">clicking this link</a>.<br/><br/>");
+		buf.append("You may <a href=/Poll?UserRequest=EditPoll&sig=" + user.getTokenSignature() + ">review and edit the questions for this poll</a>.<br/><br/>");
 		
 		int nSubmissions = ofy().load().type(PollTransaction.class).filter("assignmentId",a.id).count();
 		boolean supportsMembership = a.lti_nrps_context_memberships_url != null;
@@ -256,56 +258,27 @@ public class Poll extends HttpServlet {
 				buf.append("<a href=/Poll?sig=" + user.getTokenSignature() + ">Update</a><br/><br/>");
 			}
 		}
-		// If the poll is open, provide a quick way to close it while staying on this page
-		buf.append("<b>The poll is currently " + (a.pollIsClosed?"closed.</b>":"open.</b> <form style='display:inline;' method=post action=/Poll >"
-				+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
-				+ "<input name=UserRequest type=submit value='Close the Poll' /></form> <div id='timer0' style='display:inline;color:#EE0000'>&nbsp;</div><br/>") + "<br/>");
-
-		// Here is a simpler version of the tool below
-		if (a.pollIsClosed) buf.append("Set a time limit for this poll (in minutes): "
-				+ "<form style=display:inline method=post action=/Poll ><input type=text size=8 name=TimeLimit placeholder=unlimited />"
-				+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
-				+ "<input type=submit name=UserRequest value='Open the Poll' /> " 
-				+ "</form><br/><br/>");
-
-		// This is a hidden form submitted by javascript when time expires and results are shown
-		buf.append("<form id=pollForm method=post action=/Poll><input type=hidden name=sig value=" + user.getTokenSignature() + " />"
-				+ "<input type=hidden name=UserRequest value='Close the Poll' /></form>");
 		
-		// This is the big blue button to view the assignment (almost) like students see it
-		buf.append("<a style='text-decoration: none' href='/Poll?UserRequest=PrintPoll&sig=" + user.getTokenSignature() + "'>"
-				+ "<button style='display: block; width: 500px; border: 1 px; background-color: #00FFFF; color: black; padding: 14px 28px; font-size: 18px; text-align: center; cursor: pointer;'>"
-				+ "Show This Assignment</button></a><br/>");
-		
-		if (!a.pollIsClosed && a.pollClosesAt != null) {
-			buf.append(timer(user));
-			buf.append("<script>startTimer(" + a.pollClosesAt.getTime() + ");</script>");
-		}
+		buf.append("<form method=post action=/Poll>"
+				+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
+				+ "<input type=hidden name=UserRequest value=NextQuestion />"
+				+ "<input type=hidden name=QuestionNumber value=0 />"
+				+ "<input type=submit value='Start the Poll' />"
+				+ "</form><br/>");
 		
 		return buf.toString();
 	}
 	
 	private static String waitForPoll(User user) {
 		StringBuffer buf = new StringBuffer();
-		buf.append(Subject.banner + "<h3>The poll is closed.</h3>");
-		
-		if (user.isInstructor()) {
-			buf.append("When ready, open the poll so you and your participants can view the poll questions.<br/><br/>");
-			buf.append("Set a time limit for this poll (in minutes): "
-					+ "<form style=display:inline method=post action=/Poll ><input type=text size=8 name=TimeLimit placeholder=unlimited />"
-					+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
-					+ "<input type=submit name=UserRequest value='Open the Poll' /> " 
-					+ "</form><br/><br/>");
-		} else if (user.isTeachingAssistant()) {
-			buf.append("<a href=/Poll?UserRequest=ViewResults&sig=" + user.getTokenSignature() + ">View the Results</a>");
-		} else {
-			buf.append("Please wait. Your instructor should inform you when the poll is open.<br/>"
-					+ "At that time you can click the button below to view the poll questions.<br/><br/>");
-			buf.append("<form method=get action=/Poll />"
-					+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
-					+ "<input type=submit value='View the Poll' /> "
-					+ "</form><br/><br/>");
-		}
+		buf.append(Subject.banner + "<h2>The poll is closed.</h2>");
+
+		buf.append("Please wait. The presenter should inform you when the poll is open.<br/>"
+				+ "At that time you can click the button below to view the poll questions.<br/><br/>");
+		buf.append("<form method=get action=/Poll />"
+				+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
+				+ "<input type=submit value='View the Poll' /> "
+				+ "</form><br/><br/>");
 		return buf.toString();
 	}
 	
@@ -319,23 +292,18 @@ public class Poll extends HttpServlet {
 
 			StringBuffer buf = new StringBuffer();
 
-			buf.append("<h2>" + a.title + "</h2>");
-			buf.append("<div id='timer0' style='color: #EE0000'></div><br/>");
-
 			if (user.isInstructor()) {
-				buf.append("<b>Please tell your audience that the poll is now open so they can view the poll questions.</b><br/>");
-
-				if (a.pollClosesAt!=null) buf.append("The poll will close automatically when the timer reaches zero.<br/>");
-
 				buf.append("<form method=post action='/Poll' >"
-						+ "<a href=/Poll?sig=" + user.getTokenSignature() + ">Return to the instructor page</a>, or "
+						+ "<b>Please tell your audience that the poll is now open so they can view the poll questions. </b>"
 						+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
-						+ "<input type=hidden name=UserRequest value='Close the Poll' />"
-						+ "<input type=submit value='Close the Poll' />"
-						+ "</form>");
+						+ "<input type=hidden name=UserRequest value='ShowResults' />"
+						+ "<input type=submit value='Stop and Show Results' />"
+						+ "</form><br/><br/>");
 			}
+			
+			buf.append("<h2>" + a.title + "</h2>");
+			buf.append("<span id='timer0' style='color: #EE0000'></span>");
 
-			buf.append("<OL>");
 			int possibleScore = 0;
 			buf.append("<form id=pollForm method=post action='/Poll'>"  // onSubmit='return confirmSubmission(" + a.questionKeys.size() + ")'>"
 					+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />");
@@ -344,24 +312,20 @@ public class Poll extends HttpServlet {
 			PollTransaction pt = getPollTransaction(user,a);
 			Map<Key<Question>,Question> pollQuestions = ofy().load().keys(a.questionKeys);
 
-			for (Key<Question> k : a.questionKeys) {  // main loop to present questions
-				Question q = pollQuestions.get(k); // this should nearly always work
-				if (q==null) continue;		 // but skip the question if it has been deleted
-				q.setParameters(a.id % Integer.MAX_VALUE);
-				String studentResponse = pt.responses.get(k);
-				if (studentResponse==null) studentResponse = "";
-				buf.append("<li>" + q.print(null,studentResponse) + "<br/></li>");
-				possibleScore += q.correctAnswer==null || q.correctAnswer.isEmpty()?0:q.pointValue;
-			}
-			buf.append("</OL>");
+			Key<Question> k = a.questionKeys.get(a.questionNumber);
+			Question q = pollQuestions.get(k); // this should nearly always work
+			q.setParameters(a.id % Integer.MAX_VALUE);
+			String studentResponse = pt.responses.get(k);
+			if (studentResponse==null) studentResponse = "";
+			buf.append(q.print(null,studentResponse));
+			possibleScore += q.correctAnswer==null || q.correctAnswer.isEmpty()?0:q.pointValue;
 
-			buf.append("<div id='timer1' style='color: #EE0000'></div><br/>");
+
 			buf.append(timer(user));
-			//buf.append(confirmSubmission(user)); 
-
+			
 			buf.append("<input type=hidden name=PossibleScore value='" + possibleScore + "' />");
 			buf.append("<input type=hidden name=UserRequest value='SubmitResponses' />");
-			buf.append("<input type=submit id=pollSubmit value='Submit My Responses Now' />");
+			buf.append("<input type=submit id=pollSubmit />");
 			buf.append("</form><br/><br/>");
 
 			if (a.pollClosesAt != null) buf.append("<script>startTimer(" + (a.pollClosesAt.getTime()-(user.isInstructor()?0L:3000L)) + ");</script>");
@@ -371,39 +335,7 @@ public class Poll extends HttpServlet {
 			throw new Exception("Poll.showPollQuestions failed:" + e.getMessage()==null?e.toString():e.getMessage());
 		}
 	}
-/*	
-	private static String confirmSubmission(User u) {
-		return "<SCRIPT>"
-				+ "function confirmSubmission(nQuestions) {"
-				+ "  var elements = document.getElementById('pollForm').elements;"
-				+ "  var nAnswers;"
-				+ "  var i;"
-				+ "  var checkboxes;"
-				+ "  var lastCheckboxIndex;"
-				+ "  nAnswers = 0;"
-				+ "  for (i=0;i<elements.length;i++) {"
-				+ "    if (isNaN(elements[i].id)) continue;"
-				+ "    if (elements[i].type=='text' && elements[i].value.length>0) nAnswers++;"
-				+ "    else if (elements[i].type=='radio' && elements[i].checked) nAnswers++;"
-				+ "    else if (elements[i].type=='checkbox') {"
-				+ "      checkboxes = document.getElementsByName(elements[i].name);"
-				+ "      lastCheckboxIndex = i + checkboxes.length - 1;"
-				+ "      for (j=0;j<checkboxes.length;j++) if (checkboxes[j].checked==true) {"
-				+ "        nAnswers++;"
-				+ "        i = lastCheckboxIndex;"
-				+ "        break;"
-				+ "      }"
-				+ "    } "
-				+ "    else if (elements[i].type='hidden' && elements[i].value>0) nAnswers++;"
-				//+ "    else if (elements[i].type='textarea' && elements[i].value.length()>0) nAnswers++;"
-				+ "  }"
-				+ "  if (nAnswers<nQuestions) return confirm('Submit your responses now? ' + (nQuestions-nAnswers) + ' answers may have been left blank.');"
-				+ "  else return true;"
-				+ "}"
-				+ "function showWorkBox(qid) {}" 
-				+ "</SCRIPT>"; 
-	}
-*/
+
 	private static PollTransaction submitResponses(User user,Assignment a,HttpServletRequest request) {
 		if (a.pollIsClosed) return null;
 		
@@ -462,9 +394,8 @@ public class Poll extends HttpServlet {
 		buf.append("<form id=pollForm method=post action='/Poll' >"
 				+ (user.isInstructor()?"Whenever submissions are complete, you can ":"Your instructor will tell you when can ")
 				+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
-				+ "<input type=hidden name=UserRequest value='" + (user.isInstructor()?"Close the Poll":"View the Poll Results") + "' />"
-				+ "<input type=submit value='" + (user.isInstructor()?"Close the Poll":"View the Poll Results") + "' /> ");
-		if (user.isInstructor()) buf.append("and view the results,<br/>or you can <a href=/Poll?sig=" + user.getTokenSignature() + ">return to the instructor page</a>.<br/><br/>");
+				+ "<input type=hidden name=UserRequest value='ShowResults' />"
+				+ "<input type=submit value='" + (user.isInstructor()?"Close and Show the Results":"View the Poll Results") + "' /> ");
 		buf.append("</form><br/><br/>");
 
 		if (!a.pollIsClosed && a.pollClosesAt != null) {
@@ -529,282 +460,268 @@ public class Poll extends HttpServlet {
 	private static String resultsPage(User user,String forUserHashedId,String forUserName,Assignment a) {
 		StringBuffer buf = new StringBuffer();
 		StringBuffer debug = new StringBuffer("Debug:");
-		
+
 		try {
-		if (!user.isTeachingAssistant() && !a.pollIsClosed) return waitForResults(user,a);
-		
-		buf.append("<h2>Poll Results</h2>");
-		if (user.isInstructor() && forUserHashedId==null) {
-			if (a.pollIsClosed) buf.append("<b>Be sure to tell your audience that the poll is now closed</b> and to click the button to view the poll results.<br/>");
-			else buf.append("The poll is still open. ");
-			buf.append("You can <a href=/Poll?sig=" + user.getTokenSignature() + ">return to the instructor page</a> at any time.<br/><br/> ");
-		}
-		debug.append("b.");
-		
-		PollTransaction pt = null;
-		if (forUserHashedId==null) pt = getPollTransaction(user,a);
-		else if (user.isInstructor()) {
-			pt = ofy().load().type(PollTransaction.class).filter("assignmentId",a.id).filter("userId",forUserHashedId).first().now();
-			if (pt==null) {
-				buf.append("<br/>There was no poll submission for this user.");
-				return buf.toString();
-			} else {
-				buf.append("Name: " + (forUserName==null?"(withheld)":forUserName) + "<br/>"
-						+ "Assignment ID: " + a.id + "<br/>"
-						+ "Transaction ID: " + pt.id + "<br/>"
-						+ "Submissions: " + pt.nSubmissions + "<br/>"
-						+ (pt.nSubmissions>1?"First Submitted: " + pt.downloaded + "<br/>Last ":"")
-						+ "Submitted: " + pt.completed + "<br/><br/>");	
+			if (!a.pollIsClosed) return waitForResults(user,a);
+
+			debug.append("a.");
+
+			if (user.isInstructor() && forUserHashedId==null) {
+				if (a.questionNumber<a.questionKeys.size()-1) buf.append("<form method=post action=/Poll>");
+				
+				if (a.timeAllowed.isEmpty() || a.timeAllowed.size()<a.questionNumber-1 || a.timeAllowed.get(a.questionNumber)==null || a.timeAllowed.get(a.questionNumber)==0) {
+					buf.append("<b>Please tell your audience that they can view the poll results.</b> ");
+				}
+				
+				if (a.questionNumber<a.questionKeys.size()-1) {
+					buf.append("<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
+							+ "<input type=hidden name=UserRequest value=NextQuestion />"
+							+ "<input type=hidden name=QuestionNumber value=" + (a.questionNumber+1) + " />"
+							+ "<input type=submit value='Start the Next Question' />"
+							+ "</form><br/><br/>");
+				}
 			}
-		}
-		
-		List<PollTransaction> pts = ofy().load().type(PollTransaction.class).filter("assignmentId",a.id).list();
-		buf.append("\n");
-		buf.append("<script>"
-				+ "function ajaxSubmit(url,id,note,email) {\n"
-				+ "  var xmlhttp;\n"
-				+ "  if (url.length==0) return false;\n"
-				+ "  xmlhttp=GetXmlHttpObject();\n"
-				+ "  if (xmlhttp==null) {\n"
-				+ "    alert ('Sorry, your browser does not support AJAX!');\n"
-				+ "    return false;\n"
-				+ "  }\n"
-				+ "  xmlhttp.onreadystatechange=function() {\n"
-				+ "    if (xmlhttp.readyState==4) {\n"
-				+ "      document.getElementById('feedback' + id).innerHTML="
-				+ "      '<FONT COLOR=RED><b>Thank you. An editor will review your comment. "
-				+ "</b></FONT><p></p>';\n"
-				+ "    }\n"
-				+ "  }\n"
-				+ "  url += '&QuestionId=' + id + '&sig=" + user.getTokenSignature() + "&Notes=' + note + '&Email=' + email;\n"
-				+ "  xmlhttp.open('GET',url,true);\n"
-				+ "  xmlhttp.send(null);\n"
-				+ "  return false;\n"
-				+ "}\n"
-				+ "function GetXmlHttpObject() {\n"
-				+ "  if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari\n"
-				+ "    return new XMLHttpRequest();\n"
-				+ "  }\n"
-				+ "  if (window.ActiveXObject) { // code for IE6, IE5\n"
-				+ "    return new ActiveXObject('Microsoft.XMLHTTP');\n"
-				+ "  }\n"
-				+ "  return null;\n"
-				+ "}\n"
-				+ "</script>");	
-		buf.append("\n");
-		
-		int i=0;
-		buf.append("<div style='display: table'>"); // big-table
-		buf.append("<div style='display: table-row;'>"
-				+ "<div style='display: table-cell'></div>"  // column for question number
-				+ "<div style='display: table-cell'><h3>Questions</h3></div>"
-				+ "<div style='display: table-cell'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>"  // horizontal buffer
-				+ "<div style='display: table-cell'><h3>Group Responses</h3></div>"
-				+ "</div>");  // end of header row
-		debug.append("c.");
-		
-		Map<Key<Question>,Question> pollQuestions = ofy().load().keys(a.questionKeys);
-		
-		for (Key<Question> k : a.questionKeys) {
+			debug.append("b.");
+			
+			buf.append("<h2>Poll Results</h2>");
+			
+			PollTransaction pt = null;
+			if (forUserHashedId==null) pt = getPollTransaction(user,a);
+			else if (user.isInstructor()) {
+				pt = ofy().load().type(PollTransaction.class).filter("assignmentId",a.id).filter("userId",forUserHashedId).first().now();
+				if (pt==null) {
+					buf.append("<br/>There was no poll submission for this user.");
+					return buf.toString();
+				} else {
+					buf.append("Name: " + (forUserName==null?"(withheld)":forUserName) + "<br/>"
+							+ "Assignment ID: " + a.id + "<br/>"
+							+ "Transaction ID: " + pt.id + "<br/>"
+							+ "Submissions: " + pt.nSubmissions + "<br/>"
+							+ (pt.nSubmissions>1?"First Submitted: " + pt.downloaded + "<br/>Last ":"")
+							+ "Submitted: " + pt.completed + "<br/><br/>");	
+				}
+			}
+
+			List<PollTransaction> pts = ofy().load().type(PollTransaction.class).filter("assignmentId",a.id).list();
 			buf.append("\n");
-			try {
-				Question q = pollQuestions.get(k);
-				if (q==null) continue;
-				q.setParameters(a.id % Integer.MAX_VALUE);
-				if (q.correctAnswer==null) q.correctAnswer = "";
-				i++;
-				buf.append("<div style='display: table-row;vertical-align: top;'>");
-				buf.append("<div style='display: table-cell;vertical-align: top;'>" + i + ".&nbsp;</div>"); // number cell
-				
-				buf.append("<div style='display: table-cell;vertical-align: top;width: 400px;'>"); // question cell
-				
-				String userResponse = pt.responses==null?"":(pt.responses.get(k)==null?"":pt.responses.get(k));
-				
-				buf.append(q.printAllToStudents(userResponse));
-				
-				buf.append("</div>"   // end of question cell
-						+ "<div style='display: table-cell;vertical-align: top;'></div>");  // horizontal buffer
-				
-				// This is where we will construct a histogram showing the distribution of responses
-				debug.append("start.");
-				
-				Map<String,Integer> histogram = new HashMap<String,Integer>();
-				//String correctResponse = q.getCorrectAnswer();
-				String otherResponses = null;
-				char choice = 'a';
-				//int chart_height = 150;
-				debug.append("1.");
-				
+			buf.append("<script>"
+					+ "function ajaxSubmit(url,id,note,email) {\n"
+					+ "  var xmlhttp;\n"
+					+ "  if (url.length==0) return false;\n"
+					+ "  xmlhttp=GetXmlHttpObject();\n"
+					+ "  if (xmlhttp==null) {\n"
+					+ "    alert ('Sorry, your browser does not support AJAX!');\n"
+					+ "    return false;\n"
+					+ "  }\n"
+					+ "  xmlhttp.onreadystatechange=function() {\n"
+					+ "    if (xmlhttp.readyState==4) {\n"
+					+ "      document.getElementById('feedback' + id).innerHTML="
+					+ "      '<FONT COLOR=RED><b>Thank you. An editor will review your comment. "
+					+ "</b></FONT><p></p>';\n"
+					+ "    }\n"
+					+ "  }\n"
+					+ "  url += '&QuestionId=' + id + '&sig=" + user.getTokenSignature() + "&Notes=' + note + '&Email=' + email;\n"
+					+ "  xmlhttp.open('GET',url,true);\n"
+					+ "  xmlhttp.send(null);\n"
+					+ "  return false;\n"
+					+ "}\n"
+					+ "function GetXmlHttpObject() {\n"
+					+ "  if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari\n"
+					+ "    return new XMLHttpRequest();\n"
+					+ "  }\n"
+					+ "  if (window.ActiveXObject) { // code for IE6, IE5\n"
+					+ "    return new ActiveXObject('Microsoft.XMLHTTP');\n"
+					+ "  }\n"
+					+ "  return null;\n"
+					+ "}\n"
+					+ "</script>");	
+			buf.append("\n");
+
+			Map<Key<Question>,Question> pollQuestions = ofy().load().keys(a.questionKeys);
+
+			Key<Question> k = a.questionKeys.get(a.questionNumber);
+			buf.append("\n");
+
+			Question q = pollQuestions.get(k);
+			q.setParameters(a.id % Integer.MAX_VALUE);
+			if (q.correctAnswer==null) q.correctAnswer = "";
+			
+			String userResponse = pt.responses==null?"":(pt.responses.get(k)==null?"":pt.responses.get(k));
+
+			buf.append(q.printAllToStudents(userResponse));
+
+			// This is where we will construct a histogram showing the distribution of responses
+			buf.append("<h2>Summary of Group Poll Results</h2>");
+			debug.append("start.");
+
+			Map<String,Integer> histogram = new HashMap<String,Integer>();
+			//String correctResponse = q.getCorrectAnswer();
+			String otherResponses = null;
+			char choice = 'a';
+			//int chart_height = 150;
+			debug.append("1.");
+
+			switch (q.getQuestionType()) {
+			case Question.MULTIPLE_CHOICE:
+				for (int j = 0; j < q.nChoices; j++) {
+					histogram.put(String.valueOf(choice),0);
+					choice++;
+				}
+				debug.append("2a.");
+				for (PollTransaction t : pts) {
+					if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
+					histogram.put(t.responses.get(k),histogram.get(t.responses.get(k))+1);
+				}
+				break;
+			case Question.TRUE_FALSE:
+				histogram.put("true", 0);
+				histogram.put("false", 0);
+				//chart_height = 100;
+				debug.append("2b.");
+				for (PollTransaction t : pts) {
+					if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
+					histogram.put(t.responses.get(k),histogram.get(t.responses.get(k))+1);
+				}
+				break;
+			case Question.SELECT_MULTIPLE:
+				for (int j = 0; j < q.nChoices; j++) {
+					histogram.put(String.valueOf(choice),0);
+					choice++;
+				}
+				debug.append("2c.");
+				for (PollTransaction t : pts) {
+					if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
+					String response = t.responses.get(k);
+					debug.append(response + ".");
+					for (int m=0; m<response.length();m++) {
+						debug.append("4.");
+						histogram.put(String.valueOf(response.charAt(m)),histogram.get(String.valueOf(response.charAt(m)))+1);
+					}
+				}
+				break;
+			case Question.FILL_IN_WORD:
+				histogram.put("correct", 0);
+				histogram.put("incorrect", 0);
+				//chart_height = 100;
+				debug.append("2d.");
+				for (PollTransaction t : pts) {
+					if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
+					if (q.isCorrect(t.responses.get(k))) histogram.put("correct",histogram.get("correct")+1);
+					else {
+						histogram.put("incorrect", histogram.get("incorrect") + 1);
+						if (otherResponses==null) otherResponses = t.responses.get(k);
+						else if (otherResponses.length()<500 && t.responses.get(k) != null && !otherResponses.toLowerCase().contains(t.responses.get(k).toLowerCase())) otherResponses += "; " + t.responses.get(k);
+					}
+				}
+				break;
+			case Question.NUMERIC:
+				histogram.put("correct", 0);
+				histogram.put("incorrect", 0);
+				//chart_height = 100;
+				debug.append("2e.");
+				for (PollTransaction t : pts) {
+					if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
+					if (q.isCorrect(t.responses.get(k))) histogram.put("correct",histogram.get("correct")+1);
+					else {
+						histogram.put("incorrect", histogram.get("incorrect") + 1);
+						if (otherResponses==null) otherResponses = t.responses.get(k);
+						else if (otherResponses.length()<500 && t.responses.get(k) != null && !otherResponses.toLowerCase().contains(t.responses.get(k).toLowerCase())) otherResponses += "; " + t.responses.get(k);
+					}
+				}
+				break;
+			case Question.FIVE_STAR:
+				for (int iStars=1;iStars<6;iStars++) histogram.put(String.valueOf(iStars) + (iStars==1?" star":" stars"), 0);
+				for (PollTransaction t : pts) {
+					if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
+					try {
+						String nStars = t.responses.get(k);
+						Integer.parseInt(nStars);
+						histogram.put(nStars + (nStars.equals("1")?" star":" stars"),histogram.get(nStars + (nStars.equals("1")?" star":" stars"))+1);
+					} catch (Exception e) {}
+				}
+				break;
+			case Question.ESSAY:
+				histogram.put("Number of responses", 0);
+				for (PollTransaction t : pts) {
+					if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
+					if (t.responses.get(k).length()>0) histogram.put("Number of responses", histogram.get("Number of responses")+1);
+				}
+			default:
+			}
+			debug.append("histogram initialized.");
+
+			// Calculate a scale factor for the maximum width of the graph bars based on the max % response
+
+			int maxValue = 0;
+			int totalValues = 0;
+			for (Entry<String,Integer> e : histogram.entrySet()) {
+				totalValues += e.getValue();
+				if (e.getValue() > maxValue) maxValue = e.getValue();
+			}
+			debug.append("maxValue="+maxValue+".totalValues="+totalValues+".");
+
+			if (totalValues>0) {
+				// Print a histogram as a table containing a horizontal bar graph:
 				switch (q.getQuestionType()) {
 				case Question.MULTIPLE_CHOICE:
-					for (int j = 0; j < q.nChoices; j++) {
-						histogram.put(String.valueOf(choice),0);
-						choice++;
-					}
-					debug.append("2a.");
-					for (PollTransaction t : pts) {
-						if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
-						histogram.put(t.responses.get(k),histogram.get(t.responses.get(k))+1);
-					}
-					break;
 				case Question.TRUE_FALSE:
-					histogram.put("true", 0);
-					histogram.put("false", 0);
-					//chart_height = 100;
-					debug.append("2b.");
-					for (PollTransaction t : pts) {
-						if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
-						histogram.put(t.responses.get(k),histogram.get(t.responses.get(k))+1);
-					}
-					break;
 				case Question.SELECT_MULTIPLE:
-					for (int j = 0; j < q.nChoices; j++) {
-						histogram.put(String.valueOf(choice),0);
-						choice++;
+					buf.append("Summary of responses received for this question:<p></p>");
+					buf.append("<table>");
+					for (Entry<String,Integer> e : histogram.entrySet()) {
+						buf.append("<tr><td>");
+						buf.append(e.getKey() + "&nbsp;");
+						buf.append("</td><td>");
+						buf.append("<div style='background-color: blue;display: inline-block; width: " + 150*e.getValue()/(totalValues+1) + "px;'>&nbsp;</div>");
+						buf.append("&nbsp;" + e.getValue() + "</td></tr>");
 					}
-					debug.append("2c.");
-					for (PollTransaction t : pts) {
-						if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
-						String response = t.responses.get(k);
-						debug.append(response + ".");
-						for (int m=0; m<response.length();m++) {
-							debug.append("4.");
-							histogram.put(String.valueOf(response.charAt(m)),histogram.get(String.valueOf(response.charAt(m)))+1);
-						}
-					}
-				break;
-				case Question.FILL_IN_WORD:
-					histogram.put("correct", 0);
-					histogram.put("incorrect", 0);
-					//chart_height = 100;
-					debug.append("2d.");
-					for (PollTransaction t : pts) {
-						if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
-						if (q.isCorrect(t.responses.get(k))) histogram.put("correct",histogram.get("correct")+1);
-						else {
-							histogram.put("incorrect", histogram.get("incorrect") + 1);
-							if (otherResponses==null) otherResponses = t.responses.get(k);
-							else if (otherResponses.length()<500 && t.responses.get(k) != null && !otherResponses.toLowerCase().contains(t.responses.get(k).toLowerCase())) otherResponses += "; " + t.responses.get(k);
-						}
-					}
+					buf.append("</table>");
 					break;
+				case Question.FILL_IN_WORD:
 				case Question.NUMERIC:
-					histogram.put("correct", 0);
-					histogram.put("incorrect", 0);
-					//chart_height = 100;
-					debug.append("2e.");
-					for (PollTransaction t : pts) {
-						if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
-						if (q.isCorrect(t.responses.get(k))) histogram.put("correct",histogram.get("correct")+1);
-						else {
-							histogram.put("incorrect", histogram.get("incorrect") + 1);
-							if (otherResponses==null) otherResponses = t.responses.get(k);
-							else if (otherResponses.length()<500 && t.responses.get(k) != null && !otherResponses.toLowerCase().contains(t.responses.get(k).toLowerCase())) otherResponses += "; " + t.responses.get(k);
-						}
-					}
+					buf.append("Summary of responses received for this question:<p></p>");
+					if (q.hasACorrectAnswer()) {
+						buf.append("<table>");
+						buf.append("<tr><td>");
+						buf.append("correct" + "&nbsp;");
+						buf.append("</td><td>");
+						buf.append("<div style='background-color: blue;display: inline-block; width: " + 150*histogram.get("correct")/(totalValues+1) + "px;'>&nbsp;</div>");
+						buf.append("&nbsp;" + histogram.get("correct") + "</td></tr>");
+						buf.append("<tr><td>");
+						buf.append("incorrect" + "&nbsp;");
+						buf.append("</td><td>");
+						buf.append("<div style='background-color: blue;display: inline-block; width: " + 150*histogram.get("incorrect")/(totalValues+1) + "px;'>&nbsp;</div>");
+						buf.append("&nbsp;" + histogram.get("incorrect") + "</td></tr>");
+						if (otherResponses != null) buf.append("<tr><td colspan=2><br />Incorrect Responses: " + otherResponses + "</td></tr>");							
+						buf.append("</table>");
+					} else buf.append(otherResponses);
 					break;
 				case Question.FIVE_STAR:
-					for (int iStars=1;iStars<6;iStars++) histogram.put(String.valueOf(iStars) + (iStars==1?" star":" stars"), 0);
-					for (PollTransaction t : pts) {
-						if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
-						try {
-							String nStars = t.responses.get(k);
-							Integer.parseInt(nStars);
-							histogram.put(nStars + (nStars.equals("1")?" star":" stars"),histogram.get(nStars + (nStars.equals("1")?" star":" stars"))+1);
-						} catch (Exception e) {}
+					buf.append("Summary of responses received for this question:<p></p>");
+					buf.append("<table>");
+					for (int iStars=5;iStars>0;iStars--) {
+						buf.append("<tr><td>");
+						buf.append(String.valueOf(iStars) + (iStars==1?" star":" stars"));
+						buf.append("</td><td>");
+						buf.append("<div style='background-color: blue;display: inline-block; width: " + 150*histogram.get(String.valueOf(iStars) + (iStars==1?" star":" stars"))/(totalValues+1) + "px;'>&nbsp;</div>");
+						buf.append("&nbsp;" + histogram.get(String.valueOf(iStars) + (iStars==1?" star":" stars")) + "</td></tr>");
 					}
+					buf.append("</table><br/><br/>");
 					break;
 				case Question.ESSAY:
-					histogram.put("Number of responses", 0);
-					for (PollTransaction t : pts) {
-						if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
-						if (t.responses.get(k).length()>0) histogram.put("Number of responses", histogram.get("Number of responses")+1);
-					}
-					default:
+					int nEssays = histogram.get("Number of responses");
+					buf.append("A total of " + nEssays + (nEssays==1?" essay was ":" essays were ") + "submitted for this question.");
+					break;
 				}
-				debug.append("histogram initialized.");
-				
-				// Calculate a scale factor for the maximum width of the graph bars based on the max % response
-				
-				int maxValue = 0;
-				int totalValues = 0;
-				for (Entry<String,Integer> e : histogram.entrySet()) {
-					totalValues += e.getValue();
-					if (e.getValue() > maxValue) maxValue = e.getValue();
-				}
-				debug.append("maxValue="+maxValue+".totalValues="+totalValues+".");
-				buf.append("\n");
-				
-				buf.append("<div id=chart_div" + i + " style='display: table-cell;vertical-align: top;'>");  // histogram cell
-				if (totalValues>0) {
-					// Print a histogram as a table containing a horizontal bar graph:
-					switch (q.getQuestionType()) {
-					case Question.MULTIPLE_CHOICE:
-					case Question.TRUE_FALSE:
-					case Question.SELECT_MULTIPLE:
-						buf.append("Summary of responses received for this question:<p></p>");
-						buf.append("<table>");
-						for (Entry<String,Integer> e : histogram.entrySet()) {
-							buf.append("<tr><td>");
-							buf.append(e.getKey() + "&nbsp;");
-							buf.append("</td><td>");
-							buf.append("<div style='background-color: blue;display: inline-block; width: " + 150*e.getValue()/(totalValues+1) + "px;'>&nbsp;</div>");
-							buf.append("&nbsp;" + e.getValue() + "</td></tr>");
-						}
-						buf.append("</table>");
-						break;
-					case Question.FILL_IN_WORD:
-					case Question.NUMERIC:
-						buf.append("Summary of responses received for this question:<p></p>");
-						if (q.hasACorrectAnswer()) {
-							buf.append("<table>");
-							buf.append("<tr><td>");
-							buf.append("correct" + "&nbsp;");
-							buf.append("</td><td>");
-							buf.append("<div style='background-color: blue;display: inline-block; width: " + 150*histogram.get("correct")/(totalValues+1) + "px;'>&nbsp;</div>");
-							buf.append("&nbsp;" + histogram.get("correct") + "</td></tr>");
-							buf.append("<tr><td>");
-							buf.append("incorrect" + "&nbsp;");
-							buf.append("</td><td>");
-							buf.append("<div style='background-color: blue;display: inline-block; width: " + 150*histogram.get("incorrect")/(totalValues+1) + "px;'>&nbsp;</div>");
-							buf.append("&nbsp;" + histogram.get("incorrect") + "</td></tr>");
-							if (otherResponses != null) buf.append("<tr><td colspan=2><br />Incorrect Responses: " + otherResponses + "</td></tr>");							
-							buf.append("</table>");
-						} else buf.append(otherResponses);
-						break;
-					case Question.FIVE_STAR:
-						buf.append("Summary of responses received for this question:<p></p>");
-						buf.append("<table>");
-						for (int iStars=5;iStars>0;iStars--) {
-							buf.append("<tr><td>");
-							buf.append(String.valueOf(iStars) + (iStars==1?" star":" stars"));
-							buf.append("</td><td>");
-							buf.append("<div style='background-color: blue;display: inline-block; width: " + 150*histogram.get(String.valueOf(iStars) + (iStars==1?" star":" stars"))/(totalValues+1) + "px;'>&nbsp;</div>");
-							buf.append("&nbsp;" + histogram.get(String.valueOf(iStars) + (iStars==1?" star":" stars")) + "</td></tr>");
-						}
-						buf.append("</table><br/><br/>");
-						break;
-					case Question.ESSAY:
-						int nEssays = histogram.get("Number of responses");
-						buf.append("A total of " + nEssays + (nEssays==1?" essay was ":" essays were ") + "submitted for this question.");
-						break;
-					}
-				} else buf.append("No responses were submitted for this question.");
-				
-				buf.append("</div></div>"); // end of table cell and row
-				debug.append("endOfHistogram.");
-			
-			} catch (Exception e) {
-				buf.append(e.toString() + " " + e.getMessage() + "" + debug.toString() + "</div>");
-			}
-		}
-		buf.append("</div>");  // end of table
+			} else buf.append("No responses were submitted for this question.");
+
+			debug.append("endOfHistogram.");
 		} catch (Exception e) {
 			buf.append(e.getMessage()==null?e.toString():e.getMessage() + "<br/>" + debug.toString());
 		}
 		return buf.toString();
 	}
-	
+
 	private static String editPage(User user,Assignment a,HttpServletRequest request) {
 		StringBuffer buf = new StringBuffer(Subject.banner);
 		if (!user.isInstructor()) return "<h1>Sorry, you are not authorized to view this page.</h1>";
