@@ -51,14 +51,16 @@ public class Score {    // this object represents a best score achieved by a use
 		Score s = new Score();
 		s.assignmentId = a.id;
 		s.owner = Key.create(User.class,hashedId);
-
+		s.score = 0;
+		s.maxPossibleScore = 0;
 		List<PollTransaction> pollTransactions = ofy().load().type(PollTransaction.class).filter("assignmentId",a.id).filter("userId",hashedId).list();
 		for (PollTransaction pt : pollTransactions) {
+			int score = pt.compileScore(a.questionKeys);
+			int possibleScore = pt.compilePossibleScore(a.questionKeys);
 			s.numberOfAttempts++;  // number of pre-deadline quiz attempts
-			s.score = (pt.score>s.score?pt.score:s.score);  // keep the best (max) score
-			if (s.mostRecentAttempt==null || pt.downloaded.after(s.mostRecentAttempt)) {  // this transaction is the most recent so far
-				s.mostRecentAttempt = pt.downloaded;
-				s.maxPossibleScore = pt.possibleScore;
+			s.score = (score>s.score?score:s.score);  // keep the best (max) score
+			s.maxPossibleScore = possibleScore>s.maxPossibleScore?possibleScore:s.maxPossibleScore;
+			if (s.mostRecentAttempt==null || pt.completed.after(s.mostRecentAttempt)) {  // this transaction is the most recent so far
 			}
 		}
 

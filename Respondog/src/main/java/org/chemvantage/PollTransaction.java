@@ -20,6 +20,7 @@ package org.chemvantage;
 import java.io.Serializable;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.googlecode.objectify.Key;
@@ -36,8 +37,9 @@ public class PollTransaction implements Serializable {
 	@Index	Date downloaded;
 			Date completed;
 			int nSubmissions;
-			int score;
-			int possibleScore;
+			String nickname = "anonymous";;
+			Map<Key<Question>,Integer> scores = new HashMap<Key<Question>,Integer>();
+			Map<Key<Question>,Integer> possibleScores = new HashMap<Key<Question>,Integer>();
 			Map<Key<Question>,String> responses = new HashMap<Key<Question>,String>();
 	
     PollTransaction() {}
@@ -46,5 +48,23 @@ public class PollTransaction implements Serializable {
     	this.userId = Subject.hashId(userId);
         this.downloaded = downloaded;
         this.assignmentId = assignmentId;
-    }    
+    }
+    
+    public int compileScore(List<Key<Question>> questionKeys) {
+    	int score = 0;
+    	for (Key<Question> k : questionKeys) {
+    		Integer s = scores.get(k);
+    		score += (s==null?0:s);
+    	}
+    	return score;
+    }
+    
+    public int compilePossibleScore(List<Key<Question>> questionKeys) {
+     	int score = 0;
+    	for (Key<Question> k : questionKeys) {
+    		Integer s = possibleScores.get(k);
+    		score += (s==null?0:s);
+    	}
+    	return score;
+    }
 }

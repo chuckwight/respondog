@@ -39,21 +39,23 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import com.google.appengine.api.taskqueue.QueueFactory;
+import com.google.gson.JsonObject;
 import com.googlecode.objectify.Key;
 
 @WebServlet(urlPatterns={"/Poll","/poll"})
 public class Poll extends HttpServlet {
 	private static final long serialVersionUID = 137L;
+	private static final String[] colors = {"#ffffcc","#ffccff","#ccffff","#ccccff","#ccffcc","#ffcccc"};
 	
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		
+		response.setContentType("text/html");
+		response.setCharacterEncoding("UTF-8");
+		PrintWriter out = response.getWriter();			
 		try {
 			User user = User.getUser(request.getParameter("sig"));
-			if (user==null) throw new Exception();
-			
-			response.setContentType("text/html");
-			response.setCharacterEncoding("UTF-8");
-			PrintWriter out = response.getWriter();			
-			
+			if (user==null) throw new Exception("User is not authorized.");
+
 			String userRequest = request.getParameter("UserRequest");
 			if (userRequest==null) userRequest = "";
 			
@@ -101,30 +103,41 @@ public class Poll extends HttpServlet {
 			default:
 				if (user.isInstructor()) out.println(Subject.header() + instructorPage(user,a,request) + Subject.footer);
 				else {
-					if (a.pollIsClosed) out.println(Subject.header() + waitForPoll(user) + Subject.footer);
+					if (a.pollIsClosed) out.println(Subject.header() + waitForPoll(user,a) + Subject.footer);
 					else out.println(Subject.header() + showPollQuestions(user,a) + Subject.footer);
 				}
 			}
 			} catch (Exception e) {
-				response.sendRedirect("/Logout?sig=" + request.getParameter("sig"));
+				out.println(Subject.header() + e.getMessage()==null?e.toString():e.getMessage());
+				//response.sendRedirect("/Logout?sig=" + request.getParameter("sig"));
 			}
 		}
 
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		
+		response.setContentType("text/html");
+		response.setCharacterEncoding("UTF-8");
+		PrintWriter out = response.getWriter();			
+		StringBuffer debug = new StringBuffer("Debug: ");
+		
 		try {
 			User user = User.getUser(request.getParameter("sig"));
 			if (user==null) throw new Exception();
 
-			response.setContentType("text/html");
-			response.setCharacterEncoding("UTF-8");
-			PrintWriter out = response.getWriter();			
-			
 			String userRequest = request.getParameter("UserRequest");
 			if (userRequest==null) userRequest = "";
 			
 			Assignment a = ofy().load().type(Assignment.class).id(user.getAssignmentId()).now();
 			
 			switch (userRequest) {
+			case "SetNickname":
+				PollTransaction pt = getPollTransaction(user,a);
+				String nickname = request.getParameter("Nickname");
+				if (nickname==null) nickname = "anonymous";
+				pt.nickname = nickname;
+				ofy().save().entity(pt).now();
+				doGet(request,response);
+				return;
 			case "ShowResults":
 				if (user.isInstructor()) {
 					a.pollIsClosed = true;
@@ -137,13 +150,20 @@ public class Poll extends HttpServlet {
 				a.questionNumber = 0;
 				try {
 					a.questionNumber = Integer.parseInt(request.getParameter("QuestionNumber"));
-					a.pollClosesAt = new Date(new Date().getTime() + a.timeAllowed.get(a.questionNumber)*60000L);
+					int timeAllowed = a.timeAllowed.get(a.questionNumber); // seconds
+					a.pollClosesAt = timeAllowed==0?null:new Date(new Date().getTime() + timeAllowed*1000L);
 				} catch (Exception e) { 
 					a.pollClosesAt = null; 
 				}
 				a.pollIsClosed = false;
 				ofy().save().entity(a).now();
 				out.println(Subject.header() + showPollQuestions(user,a) + Subject.footer);
+				break;
+			case "ClosePoll":
+				if (!user.isInstructor()) break;
+				a.pollIsClosed = true;
+				a.questionNumber = 0;
+				out.println(Subject.header() + instructorPage(user,a,request) + Subject.footer);
 				break;
 			case "Reset":
 				if (!user.isInstructor()) break;
@@ -157,6 +177,7 @@ public class Poll extends HttpServlet {
 				long qid = createQuestion(user,request);
 				if (qid > 0) {
 					a.questionKeys.add(Key.create(Question.class,qid));
+					a.timeAllowed.add(60);
 					ofy().save().entity(a).now();
 				}
 				out.println(Subject.header() + editPage(user,a,request) + Subject.footer);
@@ -177,7 +198,7 @@ public class Poll extends HttpServlet {
 				out.println(Subject.header() + editPage(user,a,request) + Subject.footer);
 				break;
 			case "SubmitResponses":
-				PollTransaction pt = submitResponses(user,a,request);
+				pt = submitResponses(user,a,request);
 				if (pt!=null && pt.completed!=null) {
 					out.println(Subject.header() + waitForResults(user,a) + Subject.footer);
 				}
@@ -211,6 +232,10 @@ public class Poll extends HttpServlet {
 				moveDn(user,a,request);
 				out.println(Subject.header() + editPage(user,a,request) + Subject.footer);
 				break;
+			case "Set":
+				setAllowedTime(user,a,request);
+				out.println(Subject.header() + editPage(user,a,request) + Subject.footer);
+				break;
 			case "Preview":
 			case "Quit":
 			default:
@@ -218,11 +243,11 @@ public class Poll extends HttpServlet {
 				break;
 			}
 		} catch (Exception e) {
-			response.sendRedirect("/Logout?sig=" + request.getParameter("sig"));
+			out.println(Subject.header() + e.getMessage()==null?e.toString():e.getMessage() + "<br/>" + debug.toString());
 		}
 	}
 
-	static String instructorPage(User user,Assignment a,HttpServletRequest request) {
+	static String instructorPage(User user,Assignment a,HttpServletRequest request) throws Exception {
 		StringBuffer buf = new StringBuffer(Subject.banner);
 		
 		buf.append("<h2>Presenter Page</h2>");
@@ -258,22 +283,52 @@ public class Poll extends HttpServlet {
 				buf.append("<a href=/Poll?sig=" + user.getTokenSignature() + ">Update</a><br/><br/>");
 			}
 		}
-		
+		PollTransaction pt = getPollTransaction(user,a);
 		buf.append("<form method=post action=/Poll>"
+				+ "Choose a nickname: " 
+				+ "<input type=text size=15 name=Nickname placeholder='" + Question.quot2html(pt.nickname) + "' /> "
+				+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
+				+ "<input type=hidden name=UserRequest value=SetNickname />"
+				+ "<input type=submit />"
+				+ "</form><br/>");
+		
+		if (a.pollIsClosed) { 
+			buf.append("<form method=post action=/Poll>"
 				+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
 				+ "<input type=hidden name=UserRequest value=NextQuestion />"
 				+ "<input type=hidden name=QuestionNumber value=0 />"
 				+ "<input type=submit value='Start the Poll' />"
-				+ "</form><br/>");
-		
+				+ "</form><br/><br/>");
+		} else {
+			buf.append("<form method=post action=/Poll>"
+					+ "<b>The poll is open.</b>"
+					+ "<input type=hidden name=sig value=" + user.getTokenSignature() + " />"
+					+ "<input type=hidden name=UserRequest value=ClosePoll />"
+					+ "<input type=submit value='Close the Poll' />"
+					+ "</form><br/><br/>");
+		}
 		return buf.toString();
 	}
 	
-	private static String waitForPoll(User user) {
+	private static String waitForPoll(User user,Assignment a) throws Exception {
 		StringBuffer buf = new StringBuffer();
-		buf.append(Subject.banner + "<h2>The poll is closed.</h2>");
-
-		buf.append("Please wait. The presenter should inform you when the poll is open.<br/>"
+		buf.append(Subject.banner);
+		PollTransaction pt = getPollTransaction(user,a);
+		
+		buf.append("<h2>The poll is closed.</h2>");
+		
+		if ("anonymous".equals(pt.nickname)) {
+			buf.append("<form method=post action=/Poll>"
+					+ "Choose a nickname: " 
+					+ "<input type=text size=15 name=Nickname placeholder='" + Question.quot2html(pt.nickname) + "' /> "
+					+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
+					+ "<input type=hidden name=UserRequest value=SetNickname />"
+					+ "<input type=submit />"
+					+ "</form>");
+		}
+		
+		buf.append("Welcome, " + pt.nickname + ".<br/><br/>"
+				+ "Please wait. The presenter should inform you when the poll is open.<br/>"
 				+ "At that time you can click the button below to view the poll questions.<br/><br/>");
 		buf.append("<form method=get action=/Poll />"
 				+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
@@ -288,23 +343,22 @@ public class Poll extends HttpServlet {
 		 * the assignmentId to their User entity.
 		 */
 		try {
-			if (a.pollIsClosed) return waitForPoll(user);  // nobody gets in without the instructor opening the poll first
+			if (a.pollIsClosed) return waitForPoll(user,a);  // nobody gets in without the instructor opening the poll first
 
 			StringBuffer buf = new StringBuffer();
 
 			if (user.isInstructor()) {
-				buf.append("<form method=post action='/Poll' >"
-						+ "<b>Please tell your audience that the poll is now open so they can view the poll questions. </b>"
+				buf.append("<form method=post action='/Poll' style='display:inline'>"
+						+ "<b>Please tell your audience that the poll is now open so they can view the poll questions.</b><br/>"
+						+ "<span id='timer0' style='color: #EE0000'></span>&nbsp;"
 						+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
 						+ "<input type=hidden name=UserRequest value='ShowResults' />"
-						+ "<input type=submit value='Stop and Show Results' />"
+						+ "<input type=submit value='Stop Now and Show Results' />"
 						+ "</form><br/><br/>");
-			}
+			} else buf.append("<span id='timer0' style='color: #EE0000'></span>");
 			
-			buf.append("<h2>" + a.title + "</h2>");
-			buf.append("<span id='timer0' style='color: #EE0000'></span>");
-
-			int possibleScore = 0;
+			//buf.append("<h2>" + a.title + "</h2>");
+			
 			buf.append("<form id=pollForm method=post action='/Poll'>"  // onSubmit='return confirmSubmission(" + a.questionKeys.size() + ")'>"
 					+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />");
 
@@ -317,8 +371,11 @@ public class Poll extends HttpServlet {
 			q.setParameters(a.id % Integer.MAX_VALUE);
 			String studentResponse = pt.responses.get(k);
 			if (studentResponse==null) studentResponse = "";
-			buf.append(q.print(null,studentResponse));
-			possibleScore += q.correctAnswer==null || q.correctAnswer.isEmpty()?0:q.pointValue;
+			
+			buf.append("<div style='font-size:1.5em; background-color:" + colors[a.questionNumber%6] + "; padding:15px;'>" + q.print(null,studentResponse) + "</div>");
+			
+			int possibleScore = q.pointValue*1000;
+			//possibleScore += q.correctAnswer==null || q.correctAnswer.isEmpty()?0:q.pointValue;
 
 
 			buf.append(timer(user));
@@ -328,7 +385,7 @@ public class Poll extends HttpServlet {
 			buf.append("<input type=submit id=pollSubmit />");
 			buf.append("</form><br/><br/>");
 
-			if (a.pollClosesAt != null) buf.append("<script>startTimer(" + (a.pollClosesAt.getTime()-(user.isInstructor()?0L:3000L)) + ");</script>");
+			if (a.pollClosesAt != null && a.pollClosesAt.after(new Date())) buf.append("<script>startTimer(" + (a.pollClosesAt.getTime()-(user.isInstructor()?0L:3000L)) + ");</script>");
 
 			return buf.toString();
 		} catch (Exception e) {
@@ -336,32 +393,34 @@ public class Poll extends HttpServlet {
 		}
 	}
 
-	private static PollTransaction submitResponses(User user,Assignment a,HttpServletRequest request) {
+	private static PollTransaction submitResponses(User user,Assignment a,HttpServletRequest request) throws Exception {
 		if (a.pollIsClosed) return null;
 		
 		PollTransaction pt = getPollTransaction(user,a);
 		pt.completed = new Date();
 		pt.nSubmissions++;
 		
-		int score = 0;
-		int possibleScore = 0;
 		Map<Key<Question>,Question> pollQuestions = ofy().load().keys(a.questionKeys);
 		
-		for (Key<Question> k : a.questionKeys) {
-			try {
-				Question q = pollQuestions.get(k);
-				possibleScore += q.pointValue;
-				String studentAnswer = orderResponses(request.getParameterValues(Long.toString(k.getId())));
-				if (!studentAnswer.isEmpty()) {
-					pt.responses.put(k, studentAnswer);
-					q.setParameters(a.id % Integer.MAX_VALUE);
-					score += q.isCorrect(studentAnswer) || !q.hasACorrectAnswer()?q.pointValue:0;
-				}
-			} catch (Exception e) {}
+		Key<Question> k = a.questionKeys.get(a.questionNumber);
+		double fTimeLeft = 1.0;
+		if (a.timeAllowed.get(a.questionNumber)> 0) {
+			fTimeLeft = (double)(a.pollClosesAt.getTime() - pt.completed.getTime())/(double)(a.timeAllowed.get(a.questionNumber)*1000.);
 		}
-		if (possibleScore != pt.possibleScore) pt.possibleScore = possibleScore;
-		if (score > pt.score) pt.score = score; 
-		ofy().save().entity(pt).now();
+		try {
+			Question q = pollQuestions.get(k);
+			pt.possibleScores.put(k,Integer.valueOf(1000*q.pointValue));
+			String studentAnswer = orderResponses(request.getParameterValues(Long.toString(k.getId())));
+			int score = 0;
+			if (!studentAnswer.isEmpty()) {
+				pt.responses.put(k, studentAnswer);
+				q.setParameters(a.id % Integer.MAX_VALUE);
+				score = q.isCorrect(studentAnswer) || !q.hasACorrectAnswer()?q.pointValue * (int)Math.round(1000. * fTimeLeft):0;
+			}
+			pt.scores.put(k,Integer.valueOf(score));
+			ofy().save().entity(pt).now();
+		} catch (Exception e) {}
+
 		try {
 			if (user.isAnonymous()) throw new Exception();  // don't save Scores for anonymous users
 			if (a.lti_ags_lineitem_url != null) {
@@ -371,9 +430,16 @@ public class Poll extends HttpServlet {
 		return pt;
 	}
 	
-	private static PollTransaction getPollTransaction(User user,Assignment a) {
-		PollTransaction pt = ofy().load().type(PollTransaction.class).filter("assignmentId",a.id).filter("userId",user.getHashedId()).first().now();
-		if (pt == null) pt = new PollTransaction(user.getId(),new Date(),user.getAssignmentId());
+	private static PollTransaction getPollTransaction(User user,Assignment a) throws Exception {
+		PollTransaction pt = null;
+		try {
+			long assignmentId = a.id;
+			String userId = user.getHashedId();
+			pt = ofy().load().type(PollTransaction.class).filter("assignmentId",assignmentId).filter("userId",userId).first().now();
+			if (pt == null) pt = new PollTransaction(user.getId(),new Date(),user.getAssignmentId());
+		} catch (Exception e) {
+			throw new Exception("Poll.getPollTransaction: " + e.getMessage()==null?e.toString():e.getMessage());
+		}
 		return pt;
 	}
 	
@@ -389,10 +455,10 @@ public class Poll extends HttpServlet {
 		StringBuffer buf = new StringBuffer(Subject.banner);
 		
 		buf.append("<h3>Please wait for the poll to close.</h3>"
-				+ "<div id='timer0' style='color: #EE0000'></div><br/>");
+				+ a.pollClosesAt != null?"<div id='timer0' style='color: #EE0000'></div><br/>":"");
 		
 		buf.append("<form id=pollForm method=post action='/Poll' >"
-				+ (user.isInstructor()?"Whenever submissions are complete, you can ":"Your instructor will tell you when can ")
+				+ (user.isInstructor()?"Whenever submissions are complete, you can ":"")
 				+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
 				+ "<input type=hidden name=UserRequest value='ShowResults' />"
 				+ "<input type=submit value='" + (user.isInstructor()?"Close and Show the Results":"View the Poll Results") + "' /> ");
@@ -478,12 +544,17 @@ public class Poll extends HttpServlet {
 							+ "<input type=hidden name=UserRequest value=NextQuestion />"
 							+ "<input type=hidden name=QuestionNumber value=" + (a.questionNumber+1) + " />"
 							+ "<input type=submit value='Start the Next Question' />"
-							+ "</form><br/><br/>");
+							+ "</form>");
 				}
+			} else if (a.questionNumber<a.questionKeys.size()-1) {
+				buf.append("<form method=get action=/Poll>"
+						+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
+						+ "<input type=submit value='Show the Next Question' />"
+						+ "</form>");
 			}
 			debug.append("b.");
 			
-			buf.append("<h2>Poll Results</h2>");
+			buf.append("<h3>Your Results</h3>");
 			
 			PollTransaction pt = null;
 			if (forUserHashedId==null) pt = getPollTransaction(user,a);
@@ -548,10 +619,44 @@ public class Poll extends HttpServlet {
 			
 			String userResponse = pt.responses==null?"":(pt.responses.get(k)==null?"":pt.responses.get(k));
 
-			buf.append(q.printAllToStudents(userResponse));
+			buf.append("<div style='background-color:" + colors[a.questionNumber%6] + "; padding:15px;'>" + q.printAllToStudents(userResponse) + "</div>");
 
+			// Print a summary of the top 3 scores in the group
+			buf.append("<h3>Leaderboard</h3>");
+			
+			List<JsonObject> leaderboard = new ArrayList<JsonObject>();
+			int boardsize = pts.size()<4?1:(pts.size()==4?2:3);
+			for (PollTransaction t : pts) {
+				int score = t.compileScore(a.questionKeys);
+				int newPosition = 0;
+				for (JsonObject leader : leaderboard) {
+					if (score < leader.get("score").getAsInt()) newPosition = leaderboard.indexOf(leader);
+					else if (leaderboard.indexOf(leader)==leaderboard.size()-1) newPosition = leaderboard.size();
+				}
+				if (newPosition>0 || leaderboard.size()<boardsize) {
+					JsonObject participant = new JsonObject();
+					participant.addProperty("nickname", t.nickname);
+					participant.addProperty("score",score);
+					leaderboard.add(newPosition,participant);
+					if (leaderboard.size()>boardsize) leaderboard.remove(0);
+				}
+			}
+			buf.append("<div style='background-color:" + colors[(a.questionNumber+1)%6] + "; padding:15px;'>");
+			buf.append("After " + (a.questionNumber+1) + " question" + (a.questionNumber+1>1?"s":"") + ", the leaders are:<br/>");
+			buf.append("<OL>");
+			for (int l=leaderboard.size()-1;l>=0;l--) {
+				JsonObject leader = leaderboard.get(l).getAsJsonObject();
+				buf.append("<LI>" + leader.get("nickname").getAsString() + "&nbsp;&rarr;&nbsp;" + leader.get("score").getAsString() + " pts</LI>");
+			}
+			buf.append("</OL>");
+			buf.append("Your score is " + pt.compileScore(a.questionKeys) + " pts<br/>");
+			buf.append("</div>");
+			
 			// This is where we will construct a histogram showing the distribution of responses
-			buf.append("<h2>Summary of Group Poll Results</h2>");
+			buf.append("<h3>Summary of Group Poll Results</h3>");
+			
+			buf.append("<div style='background-color:" + colors[(a.questionNumber+2)%6] + "; padding:15px;'>");
+			
 			debug.append("start.");
 
 			Map<String,Integer> histogram = new HashMap<String,Integer>();
@@ -714,7 +819,7 @@ public class Poll extends HttpServlet {
 					break;
 				}
 			} else buf.append("No responses were submitted for this question.");
-
+			buf.append("<br/></div>");
 			debug.append("endOfHistogram.");
 		} catch (Exception e) {
 			buf.append(e.getMessage()==null?e.toString():e.getMessage() + "<br/>" + debug.toString());
@@ -739,7 +844,10 @@ public class Poll extends HttpServlet {
 				}
 				if (starterQuestions.size()>0) {
 					ofy().save().entities(starterQuestions).now();
-					for (Question q : starterQuestions) a.questionKeys.add(Key.create(q));
+					for (Question q : starterQuestions) {
+						a.questionKeys.add(Key.create(q));
+						a.timeAllowed.add(60);
+					}
 					ofy().save().entity(a).now();
 					nAuthoredQuestions = starterQuestions.size();
 					buf.append("We've included a short list of question items below to get you started. Use the controls "
@@ -758,7 +866,6 @@ public class Poll extends HttpServlet {
 
 		if (a.questionKeys.size()>0) {
 			buf.append("<h3>Current Questions For This Poll</h3>");
-			int i=0;
 			int possibleScore = 0;
 			Map<Key<Question>,Question> currentQuestions = ofy().load().keys(a.questionKeys);
 			for (Key<Question> k : a.questionKeys) {  // main loop to present questions
@@ -769,16 +876,21 @@ public class Poll extends HttpServlet {
 					continue;
 				}
 				q.setParameters();
-				i++;
+				int i = a.questionKeys.indexOf(k);
+				int minutes = a.timeAllowed.get(i)/60;
+				int seconds = a.timeAllowed.get(i)%60;
+				String time = String.valueOf(minutes) + ":" + (seconds<10?"0":"") + String.valueOf(seconds);
 				buf.append("<div style='display: table-row'>");
-				buf.append("<div style='display: table-cell;width: 75px;padding-right:20px;align: center'>" 
-						+ "<div style='text-align: right';>" + i + ".</div>"
+				buf.append("<div style='display: table-cell;width: 128px;padding-right:20px;align: center'>" 
+						+ "<div style='text-align: right';>" + (i+1) + ".</div>"
 						+ "<form action=/Poll method=post>"
 						+ "<input type=hidden name=QuestionId value='" + q.id + "' />"
 						+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
 						+ (a.questionKeys.indexOf(k)>0?"<input type=submit name=UserRequest value='MvUp' />":"")
 						+ (a.questionKeys.indexOf(k)<a.questionKeys.size()-1?"<input type=submit name=UserRequest value='MvDn' />":"")
-						+ "<br/><input type=submit name=UserRequest value='Remove' />"
+						+ "<br/><input type=submit name=UserRequest value='Remove' /><br/>"
+						+ "<label>Time:<input type=text size=3 name=AllowedTime value=" + time + " /></label>"
+						+ "<input type=submit name=UserRequest value=Set />"
 						+ "</form>");
 				if (user.getId().equals(q.authorId)) {  // give a chance to edit the question
 					buf.append("<a href=/Poll?sig=" + user.getTokenSignature() + "&UserRequest=Edit&QuestionId=" + q.id + ">Edit</a>");
@@ -837,14 +949,22 @@ public class Poll extends HttpServlet {
 	private static void addQuestions(User user,Assignment a,HttpServletRequest request) {
 		String[] qids = request.getParameterValues("QuestionId");
 		List<Key<Question>> questionKeys = new ArrayList<Key<Question>>();
+		List<Integer> timeAllowed = new ArrayList<Integer>();
 		for (String qid : qids) {
 			try {
 				questionKeys.add(Key.create(Question.class,Long.parseLong(qid)));
+				timeAllowed.add(60);
 			} catch (Exception e) {}
 		}
 		if (questionKeys.size()>0) {
-			if (a.questionKeys == null) a.questionKeys = questionKeys;
-			else a.questionKeys.addAll(questionKeys);
+			if (a.questionKeys == null) {
+				a.questionKeys = questionKeys;
+				a.timeAllowed = timeAllowed;
+			}
+			else {
+				a.questionKeys.addAll(questionKeys);
+				a.timeAllowed.addAll(timeAllowed);
+			}
 			ofy().save().entity(a).now();
 		}
 	}
@@ -1261,6 +1381,7 @@ public class Poll extends HttpServlet {
 			int i = a.questionKeys.indexOf(k);
 			if(i>0) {
 				Collections.swap(a.questionKeys, i, i-1);
+				Collections.swap(a.timeAllowed, i, i-1);
 				ofy().save().entity(a).now();
 			}
 		} catch (Exception e) {			
@@ -1276,10 +1397,27 @@ public class Poll extends HttpServlet {
 			int i = a.questionKeys.indexOf(k);
 			if(i<a.questionKeys.size()-1) {
 				Collections.swap(a.questionKeys, i, i+1);
+				Collections.swap(a.timeAllowed, i, i+1);
 				ofy().save().entity(a).now();
 			}
 		} catch (Exception e) {			
 		}
 	}
 	
+	private static void setAllowedTime(User user, Assignment a, HttpServletRequest request) {
+		// this method set the allowed time for a question displayed on the Edit page
+		if (!user.isInstructor()) return;
+		try {
+			int seconds = 0;
+			String[] time = request.getParameter("AllowedTime").split(":");  // accepts format min:sec
+			if (time.length==2) seconds = 60*Integer.parseInt(time[0]);
+			seconds += Integer.parseInt(time[time.length-1]);
+			Long questionId = Long.parseLong(request.getParameter("QuestionId"));
+			Key<Question> k = Key.create(Question.class,questionId);
+			int i = a.questionKeys.indexOf(k);
+			a.timeAllowed.set(i,seconds);
+			ofy().save().entity(a).now();
+		} catch (Exception e) {			
+		}
+	}
 }
