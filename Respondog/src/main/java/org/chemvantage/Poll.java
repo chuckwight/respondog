@@ -84,7 +84,7 @@ public class Poll extends HttpServlet {
 				out.println(Subject.header() + showPollQuestions(user,a) + Subject.footer);
 				break;
 			case "ViewResults":
-				if (user.isInstructor()) out.println(Subject.header() + resultsPage(user,a) + Subject.footer);
+				if (user.isInstructor()) out.println(Subject.header() + allResultsPage(user,a) + Subject.footer);
 				break;
 			case "ShowSummary":
 				out.println(Subject.header("Your Class ChemVantage Scores") + showSummary(user,request) + Subject.footer);
@@ -92,13 +92,16 @@ public class Poll extends HttpServlet {
 			case "Review":
 				String forUserHashedId = request.getParameter("ForUserHashedId");
 				String forUserName = request.getParameter("ForUserName");
-				out.println(Subject.header("Poll Submission Review") + resultsPage(user,forUserHashedId,forUserName,a));
+				out.println(Subject.header("Poll Submission Review") + userResultsPage(user,forUserHashedId,forUserName,a));
 				break;
 			case "Synch":
 				out.println(new Date().getTime());
 				break;
 			case "Edit":
 				out.println(Subject.header() + editQuestion(user,request) + Subject.footer);
+				break;
+			case "Finish":
+				out.println(Subject.header() + allResultsPage(user,a) + Subject.footer);
 				break;
 			default:
 				if (user.isInstructor()) out.println(Subject.header() + instructorPage(user,a,request) + Subject.footer);
@@ -143,7 +146,7 @@ public class Poll extends HttpServlet {
 					a.pollIsClosed = true;
 					ofy().save().entity(a).now();
 				}
-				out.println(Subject.header() + resultsPage(user,a) + Subject.footer);
+				out.println(Subject.header() + resultPage(user,a) + Subject.footer);
 				break;
 			case "NextQuestion":
 				if (!user.isInstructor()) break;
@@ -222,7 +225,7 @@ public class Poll extends HttpServlet {
 				out.println(Subject.header("ChemVantage Instructor Page") + instructorPage(user,a,request) + Subject.footer);
 			break;
 			case "View the Poll Results":
-				out.println(Subject.header() + resultsPage(user,a) + Subject.footer);
+				out.println(Subject.header() + resultPage(user,a) + Subject.footer);
 				break;
 			case "MvUp":
 				moveUp(user,a,request);
@@ -270,7 +273,7 @@ public class Poll extends HttpServlet {
 		
 		buf.append("You may <a href=/Poll?UserRequest=EditPoll&sig=" + user.getTokenSignature() + ">review and edit the questions for this poll</a>.<br/><br/>");
 		
-		int nSubmissions = ofy().load().type(PollTransaction.class).filter("assignmentId",a.id).count();
+		int nSubmissions = ofy().load().type(PollTransaction.class).filter("assignmentId",a.id).filter("completed >",0).count();
 		boolean supportsMembership = a.lti_nrps_context_memberships_url != null;
 		
 		if (nSubmissions > 0) {
@@ -315,7 +318,7 @@ public class Poll extends HttpServlet {
 		buf.append(Subject.banner);
 		PollTransaction pt = getPollTransaction(user,a);
 		
-		buf.append("<h2>The poll is closed.</h2>");
+		buf.append("<h2>The poll is closed. Please wait.</h2>");
 		
 		if ("anonymous".equals(pt.nickname)) {
 			buf.append("<form method=post action=/Poll>"
@@ -324,12 +327,19 @@ public class Poll extends HttpServlet {
 					+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
 					+ "<input type=hidden name=UserRequest value=SetNickname />"
 					+ "<input type=submit />"
-					+ "</form>");
+					+ "</form><br/>");
 		}
 		
-		buf.append("Welcome, " + pt.nickname + ".<br/><br/>"
-				+ "Please wait. The presenter should inform you when the poll is open.<br/>"
-				+ "At that time you can click the button below to view the poll questions.<br/><br/>");
+		if (a.questionNumber==0) {  // Poll is just starting
+			buf.append("Welcome, " + pt.nickname + ".<br/><br/>"
+				+ "The presenter should inform you when the poll is open.<br/>"
+				+ "At that time you can click the button below to view the first question.<br/><br/>");
+		} else {
+			buf.append("Thanks for your patience, " + pt.nickname + ".<br/><br/>"
+				+ "The presenter should inform you when the poll is open.<br/>"
+				+ "At that time you can click the button below to view the next question.<br/><br/>");
+		}
+		
 		buf.append("<form method=get action=/Poll />"
 				+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
 				+ "<input type=submit value='View the Poll' /> "
@@ -403,10 +413,7 @@ public class Poll extends HttpServlet {
 		Map<Key<Question>,Question> pollQuestions = ofy().load().keys(a.questionKeys);
 		
 		Key<Question> k = a.questionKeys.get(a.questionNumber);
-		double fTimeLeft = 1.0;
-		if (a.timeAllowed.get(a.questionNumber)> 0) {
-			fTimeLeft = (double)(a.pollClosesAt.getTime() - pt.completed.getTime())/(double)(a.timeAllowed.get(a.questionNumber)*1000.);
-		}
+		
 		try {
 			Question q = pollQuestions.get(k);
 			pt.possibleScores.put(k,Integer.valueOf(1000*q.pointValue));
@@ -415,7 +422,8 @@ public class Poll extends HttpServlet {
 			if (!studentAnswer.isEmpty()) {
 				pt.responses.put(k, studentAnswer);
 				q.setParameters(a.id % Integer.MAX_VALUE);
-				score = q.isCorrect(studentAnswer) || !q.hasACorrectAnswer()?q.pointValue * (int)Math.round(1000. * fTimeLeft):0;
+				int multiplier = a.timeAllowed.get(a.questionNumber)>0?(int)(q.pointValue * (a.pollClosesAt.getTime() - pt.completed.getTime())/(a.timeAllowed.get(a.questionNumber))):1000;
+				score = q.isCorrect(studentAnswer) || !q.hasACorrectAnswer()?q.pointValue * multiplier:0;
 			}
 			pt.scores.put(k,Integer.valueOf(score));
 			ofy().save().entity(pt).now();
@@ -445,17 +453,17 @@ public class Poll extends HttpServlet {
 	
 	private static String waitForResults(User user, Assignment a) {
 		
-		if (a.pollIsClosed) return resultsPage(user,a);
+		if (a.pollIsClosed) return resultPage(user,a);
 		if (user.isInstructor() && a.pollClosesAt!=null && a.pollClosesAt.before(new Date())) {
 			a.pollIsClosed = true;
 			ofy().save().entity(a).now();
-			return resultsPage(user,a);
+			return resultPage(user,a);
 		}
 		
 		StringBuffer buf = new StringBuffer(Subject.banner);
 		
 		buf.append("<h3>Please wait for the poll to close.</h3>"
-				+ a.pollClosesAt != null?"<div id='timer0' style='color: #EE0000'></div><br/>":"");
+				+ (a.pollClosesAt != null?"<div id='timer0' style='color: #EE0000'></div><br/>":""));
 		
 		buf.append("<form id=pollForm method=post action='/Poll' >"
 				+ (user.isInstructor()?"Whenever submissions are complete, you can ":"")
@@ -519,100 +527,49 @@ public class Poll extends HttpServlet {
 				+ "</SCRIPT>";
 	}
 	
-	private static String resultsPage(User user,Assignment a) {
-		return resultsPage(user,null,null,a);
-	}
-	
-	private static String resultsPage(User user,String forUserHashedId,String forUserName,Assignment a) {
+	private static String resultPage(User user,Assignment a) {
+		// This method shows the participant a narrow stack of
+		// - the current scored question
+		// - current status of the leader board
+		// - histogram of group results for the current question
 		StringBuffer buf = new StringBuffer();
 		StringBuffer debug = new StringBuffer("Debug:");
 
 		try {
 			if (!a.pollIsClosed) return waitForResults(user,a);
 
-			debug.append("a.");
-
-			if (user.isInstructor() && forUserHashedId==null) {
+			if (user.isInstructor()) {
 				if (a.questionNumber<a.questionKeys.size()-1) buf.append("<form method=post action=/Poll>");
 				
 				if (a.timeAllowed.isEmpty() || a.timeAllowed.size()<a.questionNumber-1 || a.timeAllowed.get(a.questionNumber)==null || a.timeAllowed.get(a.questionNumber)==0) {
-					buf.append("<b>Please tell your audience that they can view the poll results.</b> ");
+					buf.append("<b>Please tell your audience that they can view the poll results.</b><br/>");
 				}
-				
 				if (a.questionNumber<a.questionKeys.size()-1) {
 					buf.append("<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
 							+ "<input type=hidden name=UserRequest value=NextQuestion />"
 							+ "<input type=hidden name=QuestionNumber value=" + (a.questionNumber+1) + " />"
-							+ "<input type=submit value='Start the Next Question' />"
+							+ "When ready, you may <input type=submit value='Start the Next Question' />"
+							+ "</form>");
+				} else {
+					buf.append("<form method=get action=/Poll>"
+							+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
+							+ "<input type=submit name=UserRequest value='" + (a.questionNumber<a.questionKeys.size()-1?"Show the Next Question":"Finish") + "' />"
 							+ "</form>");
 				}
-			} else if (a.questionNumber<a.questionKeys.size()-1) {
+			} else { // participant button to continue
 				buf.append("<form method=get action=/Poll>"
 						+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
-						+ "<input type=submit value='Show the Next Question' />"
+						+ "<input type=submit name=UserRequest value='" + (a.questionNumber<a.questionKeys.size()-1?"Show the Next Question":"Finish") + "' />"
 						+ "</form>");
 			}
 			debug.append("b.");
 			
-			buf.append("<h3>Your Results</h3>");
+			buf.append("<h3>Your Result</h3>");
 			
-			PollTransaction pt = null;
-			if (forUserHashedId==null) pt = getPollTransaction(user,a);
-			else if (user.isInstructor()) {
-				pt = ofy().load().type(PollTransaction.class).filter("assignmentId",a.id).filter("userId",forUserHashedId).first().now();
-				if (pt==null) {
-					buf.append("<br/>There was no poll submission for this user.");
-					return buf.toString();
-				} else {
-					buf.append("Name: " + (forUserName==null?"(withheld)":forUserName) + "<br/>"
-							+ "Assignment ID: " + a.id + "<br/>"
-							+ "Transaction ID: " + pt.id + "<br/>"
-							+ "Submissions: " + pt.nSubmissions + "<br/>"
-							+ (pt.nSubmissions>1?"First Submitted: " + pt.downloaded + "<br/>Last ":"")
-							+ "Submitted: " + pt.completed + "<br/><br/>");	
-				}
-			}
-
+			PollTransaction pt = getPollTransaction(user,a);
 			List<PollTransaction> pts = ofy().load().type(PollTransaction.class).filter("assignmentId",a.id).list();
-			buf.append("\n");
-			buf.append("<script>"
-					+ "function ajaxSubmit(url,id,note,email) {\n"
-					+ "  var xmlhttp;\n"
-					+ "  if (url.length==0) return false;\n"
-					+ "  xmlhttp=GetXmlHttpObject();\n"
-					+ "  if (xmlhttp==null) {\n"
-					+ "    alert ('Sorry, your browser does not support AJAX!');\n"
-					+ "    return false;\n"
-					+ "  }\n"
-					+ "  xmlhttp.onreadystatechange=function() {\n"
-					+ "    if (xmlhttp.readyState==4) {\n"
-					+ "      document.getElementById('feedback' + id).innerHTML="
-					+ "      '<FONT COLOR=RED><b>Thank you. An editor will review your comment. "
-					+ "</b></FONT><p></p>';\n"
-					+ "    }\n"
-					+ "  }\n"
-					+ "  url += '&QuestionId=' + id + '&sig=" + user.getTokenSignature() + "&Notes=' + note + '&Email=' + email;\n"
-					+ "  xmlhttp.open('GET',url,true);\n"
-					+ "  xmlhttp.send(null);\n"
-					+ "  return false;\n"
-					+ "}\n"
-					+ "function GetXmlHttpObject() {\n"
-					+ "  if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari\n"
-					+ "    return new XMLHttpRequest();\n"
-					+ "  }\n"
-					+ "  if (window.ActiveXObject) { // code for IE6, IE5\n"
-					+ "    return new ActiveXObject('Microsoft.XMLHTTP');\n"
-					+ "  }\n"
-					+ "  return null;\n"
-					+ "}\n"
-					+ "</script>");	
-			buf.append("\n");
-
 			Map<Key<Question>,Question> pollQuestions = ofy().load().keys(a.questionKeys);
-
-			Key<Question> k = a.questionKeys.get(a.questionNumber);
-			buf.append("\n");
-
+			Key<Question> k = a.questionKeys.get(a.questionNumber);			
 			Question q = pollQuestions.get(k);
 			q.setParameters(a.id % Integer.MAX_VALUE);
 			if (q.correctAnswer==null) q.correctAnswer = "";
@@ -621,209 +578,272 @@ public class Poll extends HttpServlet {
 
 			buf.append("<div style='background-color:" + colors[a.questionNumber%6] + "; padding:15px;'>" + q.printAllToStudents(userResponse) + "</div>");
 
-			// Print a summary of the top 3 scores in the group
-			buf.append("<h3>Leaderboard</h3>");
-			
-			List<JsonObject> leaderboard = new ArrayList<JsonObject>();
-			int boardsize = pts.size()<4?1:(pts.size()==4?2:3);
-			for (PollTransaction t : pts) {
-				int score = t.compileScore(a.questionKeys);
-				int newPosition = 0;
-				for (JsonObject leader : leaderboard) {
-					if (score < leader.get("score").getAsInt()) newPosition = leaderboard.indexOf(leader);
-					else if (leaderboard.indexOf(leader)==leaderboard.size()-1) newPosition = leaderboard.size();
-				}
-				if (newPosition>0 || leaderboard.size()<boardsize) {
-					JsonObject participant = new JsonObject();
-					participant.addProperty("nickname", t.nickname);
-					participant.addProperty("score",score);
-					leaderboard.add(newPosition,participant);
-					if (leaderboard.size()>boardsize) leaderboard.remove(0);
-				}
-			}
-			buf.append("<div style='background-color:" + colors[(a.questionNumber+1)%6] + "; padding:15px;'>");
-			buf.append("After " + (a.questionNumber+1) + " question" + (a.questionNumber+1>1?"s":"") + ", the leaders are:<br/>");
-			buf.append("<OL>");
-			for (int l=leaderboard.size()-1;l>=0;l--) {
-				JsonObject leader = leaderboard.get(l).getAsJsonObject();
-				buf.append("<LI>" + leader.get("nickname").getAsString() + "&nbsp;&rarr;&nbsp;" + leader.get("score").getAsString() + " pts</LI>");
-			}
-			buf.append("</OL>");
-			buf.append("Your score is " + pt.compileScore(a.questionKeys) + " pts<br/>");
-			buf.append("</div>");
-			
 			// This is where we will construct a histogram showing the distribution of responses
-			buf.append("<h3>Summary of Group Poll Results</h3>");
-			
-			buf.append("<div style='background-color:" + colors[(a.questionNumber+2)%6] + "; padding:15px;'>");
-			
-			debug.append("start.");
-
-			Map<String,Integer> histogram = new HashMap<String,Integer>();
-			//String correctResponse = q.getCorrectAnswer();
-			String otherResponses = null;
-			char choice = 'a';
-			//int chart_height = 150;
-			debug.append("1.");
-
-			switch (q.getQuestionType()) {
-			case Question.MULTIPLE_CHOICE:
-				for (int j = 0; j < q.nChoices; j++) {
-					histogram.put(String.valueOf(choice),0);
-					choice++;
-				}
-				debug.append("2a.");
-				for (PollTransaction t : pts) {
-					if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
-					histogram.put(t.responses.get(k),histogram.get(t.responses.get(k))+1);
-				}
-				break;
-			case Question.TRUE_FALSE:
-				histogram.put("true", 0);
-				histogram.put("false", 0);
-				//chart_height = 100;
-				debug.append("2b.");
-				for (PollTransaction t : pts) {
-					if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
-					histogram.put(t.responses.get(k),histogram.get(t.responses.get(k))+1);
-				}
-				break;
-			case Question.SELECT_MULTIPLE:
-				for (int j = 0; j < q.nChoices; j++) {
-					histogram.put(String.valueOf(choice),0);
-					choice++;
-				}
-				debug.append("2c.");
-				for (PollTransaction t : pts) {
-					if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
-					String response = t.responses.get(k);
-					debug.append(response + ".");
-					for (int m=0; m<response.length();m++) {
-						debug.append("4.");
-						histogram.put(String.valueOf(response.charAt(m)),histogram.get(String.valueOf(response.charAt(m)))+1);
-					}
-				}
-				break;
-			case Question.FILL_IN_WORD:
-				histogram.put("correct", 0);
-				histogram.put("incorrect", 0);
-				//chart_height = 100;
-				debug.append("2d.");
-				for (PollTransaction t : pts) {
-					if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
-					if (q.isCorrect(t.responses.get(k))) histogram.put("correct",histogram.get("correct")+1);
-					else {
-						histogram.put("incorrect", histogram.get("incorrect") + 1);
-						if (otherResponses==null) otherResponses = t.responses.get(k);
-						else if (otherResponses.length()<500 && t.responses.get(k) != null && !otherResponses.toLowerCase().contains(t.responses.get(k).toLowerCase())) otherResponses += "; " + t.responses.get(k);
-					}
-				}
-				break;
-			case Question.NUMERIC:
-				histogram.put("correct", 0);
-				histogram.put("incorrect", 0);
-				//chart_height = 100;
-				debug.append("2e.");
-				for (PollTransaction t : pts) {
-					if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
-					if (q.isCorrect(t.responses.get(k))) histogram.put("correct",histogram.get("correct")+1);
-					else {
-						histogram.put("incorrect", histogram.get("incorrect") + 1);
-						if (otherResponses==null) otherResponses = t.responses.get(k);
-						else if (otherResponses.length()<500 && t.responses.get(k) != null && !otherResponses.toLowerCase().contains(t.responses.get(k).toLowerCase())) otherResponses += "; " + t.responses.get(k);
-					}
-				}
-				break;
-			case Question.FIVE_STAR:
-				for (int iStars=1;iStars<6;iStars++) histogram.put(String.valueOf(iStars) + (iStars==1?" star":" stars"), 0);
-				for (PollTransaction t : pts) {
-					if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
-					try {
-						String nStars = t.responses.get(k);
-						Integer.parseInt(nStars);
-						histogram.put(nStars + (nStars.equals("1")?" star":" stars"),histogram.get(nStars + (nStars.equals("1")?" star":" stars"))+1);
-					} catch (Exception e) {}
-				}
-				break;
-			case Question.ESSAY:
-				histogram.put("Number of responses", 0);
-				for (PollTransaction t : pts) {
-					if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
-					if (t.responses.get(k).length()>0) histogram.put("Number of responses", histogram.get("Number of responses")+1);
-				}
-			default:
-			}
-			debug.append("histogram initialized.");
-
-			// Calculate a scale factor for the maximum width of the graph bars based on the max % response
-
-			int maxValue = 0;
-			int totalValues = 0;
-			for (Entry<String,Integer> e : histogram.entrySet()) {
-				totalValues += e.getValue();
-				if (e.getValue() > maxValue) maxValue = e.getValue();
-			}
-			debug.append("maxValue="+maxValue+".totalValues="+totalValues+".");
-
-			if (totalValues>0) {
-				// Print a histogram as a table containing a horizontal bar graph:
-				switch (q.getQuestionType()) {
-				case Question.MULTIPLE_CHOICE:
-				case Question.TRUE_FALSE:
-				case Question.SELECT_MULTIPLE:
-					buf.append("Summary of responses received for this question:<p></p>");
-					buf.append("<table>");
-					for (Entry<String,Integer> e : histogram.entrySet()) {
-						buf.append("<tr><td>");
-						buf.append(e.getKey() + "&nbsp;");
-						buf.append("</td><td>");
-						buf.append("<div style='background-color: blue;display: inline-block; width: " + 150*e.getValue()/(totalValues+1) + "px;'>&nbsp;</div>");
-						buf.append("&nbsp;" + e.getValue() + "</td></tr>");
-					}
-					buf.append("</table>");
-					break;
-				case Question.FILL_IN_WORD:
-				case Question.NUMERIC:
-					buf.append("Summary of responses received for this question:<p></p>");
-					if (q.hasACorrectAnswer()) {
-						buf.append("<table>");
-						buf.append("<tr><td>");
-						buf.append("correct" + "&nbsp;");
-						buf.append("</td><td>");
-						buf.append("<div style='background-color: blue;display: inline-block; width: " + 150*histogram.get("correct")/(totalValues+1) + "px;'>&nbsp;</div>");
-						buf.append("&nbsp;" + histogram.get("correct") + "</td></tr>");
-						buf.append("<tr><td>");
-						buf.append("incorrect" + "&nbsp;");
-						buf.append("</td><td>");
-						buf.append("<div style='background-color: blue;display: inline-block; width: " + 150*histogram.get("incorrect")/(totalValues+1) + "px;'>&nbsp;</div>");
-						buf.append("&nbsp;" + histogram.get("incorrect") + "</td></tr>");
-						if (otherResponses != null) buf.append("<tr><td colspan=2><br />Incorrect Responses: " + otherResponses + "</td></tr>");							
-						buf.append("</table>");
-					} else buf.append(otherResponses);
-					break;
-				case Question.FIVE_STAR:
-					buf.append("Summary of responses received for this question:<p></p>");
-					buf.append("<table>");
-					for (int iStars=5;iStars>0;iStars--) {
-						buf.append("<tr><td>");
-						buf.append(String.valueOf(iStars) + (iStars==1?" star":" stars"));
-						buf.append("</td><td>");
-						buf.append("<div style='background-color: blue;display: inline-block; width: " + 150*histogram.get(String.valueOf(iStars) + (iStars==1?" star":" stars"))/(totalValues+1) + "px;'>&nbsp;</div>");
-						buf.append("&nbsp;" + histogram.get(String.valueOf(iStars) + (iStars==1?" star":" stars")) + "</td></tr>");
-					}
-					buf.append("</table><br/><br/>");
-					break;
-				case Question.ESSAY:
-					int nEssays = histogram.get("Number of responses");
-					buf.append("A total of " + nEssays + (nEssays==1?" essay was ":" essays were ") + "submitted for this question.");
-					break;
-				}
-			} else buf.append("No responses were submitted for this question.");
-			buf.append("<br/></div>");
-			debug.append("endOfHistogram.");
+			buf.append("<h3>Summary of Group Results</h3>");		
+			buf.append("<div style='background-color:" + colors[(a.questionNumber+1)%6] + "; padding:15px;'>" + getHistogram(q,pts) + "</div>");
+		
+			// Print a summary of the top 3 scores in the group
+			buf.append("<h3>Leader Board</h3>");
+			buf.append("<div style='background-color:" + colors[(a.questionNumber+2)%6] + "; padding:15px;'>" + getLeaderBoard(a,pt,pts) + "</div>");
+						
 		} catch (Exception e) {
 			buf.append(e.getMessage()==null?e.toString():e.getMessage() + "<br/>" + debug.toString());
 		}
+		return buf.toString();
+	}
+	
+	private String allResultsPage(User user,Assignment a) throws Exception {
+		StringBuffer buf = new StringBuffer();
+		buf.append("<h2>" + a.title + "</h2>");
+		
+		buf.append("<h3>Congratulations to the Top Scorers!</h3>");
+		PollTransaction pt = getPollTransaction(user,a);
+		List<PollTransaction> pts = ofy().load().type(PollTransaction.class).filter("assignmentId",a.id).list();		
+		buf.append("<div style='background-color:" + colors[5] + "; padding:15px;'>" + getLeaderBoard(a,pt,pts) + "</div>");
+		
+		buf.append("<h3>Summary of Group Results</h3>");
+		Map<Key<Question>,Question> pollQuestions = ofy().load().keys(a.questionKeys);
+		buf.append("<OL>");
+		for (Key<Question> k : a.questionKeys) {
+			Question q = pollQuestions.get(k);
+			q.setParameters(a.id % Integer.MAX_VALUE);
+			if (q.correctAnswer==null) q.correctAnswer = "";
+			buf.append("<LI><div style='background-color:" + colors[a.questionKeys.indexOf(k)%6] + "; padding:15px;'>");
+			buf.append(q.printAll());
+			buf.append(getHistogram(q,pts));
+			buf.append("</div><br/></LI>");
+		}
+		buf.append("</OL>");
+		return buf.toString();
+	}
+	
+	private String userResultsPage(User user, String forUserHashedId, String forUserName, Assignment a) throws Exception {
+		if (!user.isInstructor()) throw new Exception("You must be the instructor to view this page.");
+		StringBuffer buf = new StringBuffer();
+		PollTransaction pt = null;
+
+		pt = ofy().load().type(PollTransaction.class).filter("assignmentId",a.id).filter("userId",forUserHashedId).first().now();
+		if (pt==null) {
+			buf.append("<br/>There was no poll submission for this user.");
+			return buf.toString();
+		} else {
+			buf.append("Name: " + (forUserName==null?"(withheld)":forUserName) + "<br/>"
+					+ "Assignment ID: " + a.id + "<br/>"
+					+ "Transaction ID: " + pt.id + "<br/>"
+					+ "Submissions: " + pt.nSubmissions + "<br/>"
+					+ (pt.nSubmissions>1?"First Submitted: " + pt.downloaded + "<br/>Last ":"")
+					+ "Submitted: " + pt.completed + "<br/><br/>");	
+		}
+
+		Map<Key<Question>,Question> pollQuestions = ofy().load().keys(a.questionKeys);
+
+		for (Key<Question> k : a.questionKeys) {
+			Question q = pollQuestions.get(k);
+			q.setParameters(a.id % Integer.MAX_VALUE);
+			if (q.correctAnswer==null) q.correctAnswer = "";
+			String userResponse = pt.responses==null?"":(pt.responses.get(k)==null?"":pt.responses.get(k));
+			buf.append("<div style='background-color:" + colors[a.questionKeys.indexOf(k)%6] + "; padding:15px;'>" + q.printAllToStudents(userResponse) + "</div>");
+		}
+		return buf.toString();
+	}
+	
+	private static String getLeaderBoard(Assignment a,PollTransaction pt,List<PollTransaction> pts) {
+		StringBuffer buf = new StringBuffer();
+		List<JsonObject> leaderboard = new ArrayList<JsonObject>();
+		int boardsize = pts.size()<4?1:(pts.size()==4?2:3);
+		for (PollTransaction t : pts) {
+			int score = t.compileScore(a.questionKeys);
+			int newPosition = 0;
+			for (JsonObject leader : leaderboard) {
+				if (score < leader.get("score").getAsInt()) newPosition = leaderboard.indexOf(leader);
+				else if (leaderboard.indexOf(leader)==leaderboard.size()-1) newPosition = leaderboard.size();
+			}
+			if (newPosition>0 || leaderboard.size()<boardsize) {
+				JsonObject participant = new JsonObject();
+				participant.addProperty("nickname", t.nickname);
+				participant.addProperty("score",score);
+				leaderboard.add(newPosition,participant);
+				if (leaderboard.size()>boardsize) leaderboard.remove(0);
+			}
+		}
+		buf.append("After " + (a.questionNumber+1) + " question" + (a.questionNumber+1>1?"s":"") + ", the leaders are:<br/>");
+		buf.append("<OL>");
+		for (int l=leaderboard.size()-1;l>=0;l--) {
+			JsonObject leader = leaderboard.get(l).getAsJsonObject();
+			buf.append("<LI>" + leader.get("nickname").getAsString() + "&nbsp;&rarr;&nbsp;" + leader.get("score").getAsString() + " pts</LI>");
+		}
+		buf.append("</OL>");
+	
+		buf.append("Your score is " + pt.compileScore(a.questionKeys) + " out of a possible " + pt.compilePossibleScore(a.questionKeys) + " pts." );
+		
+		return buf.toString();
+	}
+	
+	private static String getHistogram(Question q,List<PollTransaction> pts) throws Exception {
+		StringBuffer buf = new StringBuffer();
+		StringBuffer debug = new StringBuffer("Debug:");
+		
+		Map<String,Integer> histogram = new HashMap<String,Integer>();
+		//String correctResponse = q.getCorrectAnswer();
+		String otherResponses = null;
+		char choice = 'a';
+		Key<Question> k = Key.create(q);
+		
+		switch (q.getQuestionType()) {
+		case Question.MULTIPLE_CHOICE:
+			for (int j = 0; j < q.nChoices; j++) {
+				histogram.put(String.valueOf(choice),0);
+				choice++;
+			}
+			debug.append("2a.");
+			for (PollTransaction t : pts) {
+				if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
+				histogram.put(t.responses.get(k),histogram.get(t.responses.get(k))+1);
+			}
+			break;
+		case Question.TRUE_FALSE:
+			histogram.put("true", 0);
+			histogram.put("false", 0);
+			//chart_height = 100;
+			debug.append("2b.");
+			for (PollTransaction t : pts) {
+				if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
+				histogram.put(t.responses.get(k),histogram.get(t.responses.get(k))+1);
+			}
+			break;
+		case Question.SELECT_MULTIPLE:
+			for (int j = 0; j < q.nChoices; j++) {
+				histogram.put(String.valueOf(choice),0);
+				choice++;
+			}
+			debug.append("2c.");
+			for (PollTransaction t : pts) {
+				if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
+				String response = t.responses.get(k);
+				debug.append(response + ".");
+				for (int m=0; m<response.length();m++) {
+					debug.append("4.");
+					histogram.put(String.valueOf(response.charAt(m)),histogram.get(String.valueOf(response.charAt(m)))+1);
+				}
+			}
+			break;
+		case Question.FILL_IN_WORD:
+			histogram.put("correct", 0);
+			histogram.put("incorrect", 0);
+			//chart_height = 100;
+			debug.append("2d.");
+			for (PollTransaction t : pts) {
+				if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
+				if (q.isCorrect(t.responses.get(k))) histogram.put("correct",histogram.get("correct")+1);
+				else {
+					histogram.put("incorrect", histogram.get("incorrect") + 1);
+					if (otherResponses==null) otherResponses = t.responses.get(k);
+					else if (otherResponses.length()<500 && t.responses.get(k) != null && !otherResponses.toLowerCase().contains(t.responses.get(k).toLowerCase())) otherResponses += "; " + t.responses.get(k);
+				}
+			}
+			break;
+		case Question.NUMERIC:
+			histogram.put("correct", 0);
+			histogram.put("incorrect", 0);
+			//chart_height = 100;
+			debug.append("2e.");
+			for (PollTransaction t : pts) {
+				if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
+				if (q.isCorrect(t.responses.get(k))) histogram.put("correct",histogram.get("correct")+1);
+				else {
+					histogram.put("incorrect", histogram.get("incorrect") + 1);
+					if (otherResponses==null) otherResponses = t.responses.get(k);
+					else if (otherResponses.length()<500 && t.responses.get(k) != null && !otherResponses.toLowerCase().contains(t.responses.get(k).toLowerCase())) otherResponses += "; " + t.responses.get(k);
+				}
+			}
+			break;
+		case Question.FIVE_STAR:
+			for (int iStars=1;iStars<6;iStars++) histogram.put(String.valueOf(iStars) + (iStars==1?" star":" stars"), 0);
+			for (PollTransaction t : pts) {
+				if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
+				try {
+					String nStars = t.responses.get(k);
+					Integer.parseInt(nStars);
+					histogram.put(nStars + (nStars.equals("1")?" star":" stars"),histogram.get(nStars + (nStars.equals("1")?" star":" stars"))+1);
+				} catch (Exception e) {}
+			}
+			break;
+		case Question.ESSAY:
+			histogram.put("Number of responses", 0);
+			for (PollTransaction t : pts) {
+				if (t.completed==null || t.responses==null || t.responses.get(k)==null) continue;
+				if (t.responses.get(k).length()>0) histogram.put("Number of responses", histogram.get("Number of responses")+1);
+			}
+		default:
+		}
+		debug.append("histogram initialized.");
+
+		// Calculate a scale factor for the maximum width of the graph bars based on the max % response
+
+		int maxValue = 0;
+		int totalValues = 0;
+		for (Entry<String,Integer> e : histogram.entrySet()) {
+			totalValues += e.getValue();
+			if (e.getValue() > maxValue) maxValue = e.getValue();
+		}
+		debug.append("maxValue="+maxValue+".totalValues="+totalValues+".");
+
+		if (totalValues>0) {
+			// Print a histogram as a table containing a horizontal bar graph:
+			switch (q.getQuestionType()) {
+			case Question.MULTIPLE_CHOICE:
+			case Question.TRUE_FALSE:
+			case Question.SELECT_MULTIPLE:
+				buf.append("Summary of responses received for this question:<p></p>");
+				buf.append("<table>");
+				for (Entry<String,Integer> e : histogram.entrySet()) {
+					buf.append("<tr><td>");
+					buf.append(e.getKey() + "&nbsp;");
+					buf.append("</td><td>");
+					buf.append("<div style='background-color: blue;display: inline-block; width: " + 150*e.getValue()/(totalValues+1) + "px;'>&nbsp;</div>");
+					buf.append("&nbsp;" + e.getValue() + "</td></tr>");
+				}
+				buf.append("</table>");
+				break;
+			case Question.FILL_IN_WORD:
+			case Question.NUMERIC:
+				buf.append("Summary of responses received for this question:<p></p>");
+				if (q.hasACorrectAnswer()) {
+					buf.append("<table>");
+					buf.append("<tr><td>");
+					buf.append("correct" + "&nbsp;");
+					buf.append("</td><td>");
+					buf.append("<div style='background-color: blue;display: inline-block; width: " + 150*histogram.get("correct")/(totalValues+1) + "px;'>&nbsp;</div>");
+					buf.append("&nbsp;" + histogram.get("correct") + "</td></tr>");
+					buf.append("<tr><td>");
+					buf.append("incorrect" + "&nbsp;");
+					buf.append("</td><td>");
+					buf.append("<div style='background-color: blue;display: inline-block; width: " + 150*histogram.get("incorrect")/(totalValues+1) + "px;'>&nbsp;</div>");
+					buf.append("&nbsp;" + histogram.get("incorrect") + "</td></tr>");
+					if (otherResponses != null) buf.append("<tr><td colspan=2><br />Incorrect Responses: " + otherResponses + "</td></tr>");							
+					buf.append("</table><br/>");
+				} else buf.append(otherResponses + "<br/>");
+				break;
+			case Question.FIVE_STAR:
+				buf.append("Summary of responses received for this question:<p></p>");
+				buf.append("<table>");
+				for (int iStars=5;iStars>0;iStars--) {
+					buf.append("<tr><td>");
+					buf.append(String.valueOf(iStars) + (iStars==1?" star":" stars"));
+					buf.append("</td><td>");
+					buf.append("<div style='background-color: blue;display: inline-block; width: " + 150*histogram.get(String.valueOf(iStars) + (iStars==1?" star":" stars"))/(totalValues+1) + "px;'>&nbsp;</div>");
+					buf.append("&nbsp;" + histogram.get(String.valueOf(iStars) + (iStars==1?" star":" stars")) + "</td></tr>");
+				}
+				buf.append("</table><br/>");
+				break;
+			case Question.ESSAY:
+				int nEssays = histogram.get("Number of responses");
+				buf.append("A total of " + nEssays + (nEssays==1?" essay was ":" essays were ") + "submitted for this question.");
+				break;
+			}
+		} else buf.append("No responses were submitted for this question.<br/>");
+		//buf.append("<br/>");
+		
 		return buf.toString();
 	}
 

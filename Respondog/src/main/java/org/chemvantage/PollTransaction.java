@@ -35,7 +35,7 @@ public class PollTransaction implements Serializable {
 	@Index	String userId;
 	@Index  long assignmentId;
 	@Index	Date downloaded;
-			Date completed;
+	@Index	Date completed;
 			int nSubmissions;
 			String nickname = "anonymous";;
 			Map<Key<Question>,Integer> scores = new HashMap<Key<Question>,Integer>();

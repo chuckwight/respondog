@@ -384,7 +384,7 @@ public class Question implements Serializable, Cloneable {
 						+ (correctAnswer.indexOf(choice)>=0?"</B>":"</FONT>")
 						+ "</LI>");
 			}
-			buf.append("</UL>");
+			buf.append("</UL><br/>");
 			break;
 		case 2: // True/False
 			buf.append(text + "<br/>");
@@ -395,7 +395,7 @@ public class Question implements Serializable, Cloneable {
 			buf.append("<LI>" 
 					+ (correctAnswer.equals("false")?"<B>False</B>":"<FONT COLOR=#888888>False</FONT>") 
 					+ "</LI>");
-			buf.append("</UL>");
+			buf.append("</UL><br/>");
 			break;
 		case 3: // Select Multiple
 			buf.append(text + "<br/>");
@@ -409,7 +409,7 @@ public class Question implements Serializable, Cloneable {
 						+ (correctAnswer.indexOf(choice)>=0?"</B>":"</FONT>")
 						+ "</LI>");
 			}
-			buf.append("</UL>");
+			buf.append("</UL><br/>");
 			break;
 		case 4: // Fill-in-the-Word
 			buf.append(text + "<br/>");
@@ -467,7 +467,7 @@ public class Question implements Serializable, Cloneable {
 			buf.append("<span style='color:#EE0000;font-size:small;'>(800 characters max):</span><br/>");
 			buf.append("<textarea id=" + this.id + " name=" + this.id + " rows=5 cols=60 wrap=soft placeholder='Enter your answer here' "				
 					+ "onKeyUp=document.getElementById('" + this.id + "').value=document.getElementById('" + this.id + "').value.substring(0,800);}>"
-					+ "</textarea><br>");
+					+ "</textarea><br/><br/>");
 			break;
 		default:
 		}			
@@ -573,7 +573,7 @@ public class Question implements Serializable, Cloneable {
 				}
 				buf.append("<br/>");
 				break;
-			case 7: buf.append("<b>The answer submitted was:</b><div style='border: solid 1px'>" + studentAnswer + "</div>"); 
+			case 7: buf.append("<b>The answer submitted was: </b>" + studentAnswer); 
 				break;
 			default: buf.append("<b>The answer submitted was: " + studentAnswer + "</b>&nbsp;");
 			}
@@ -586,39 +586,6 @@ public class Question implements Serializable, Cloneable {
 			}
 			buf.append("<br/><br/>");
 		}
-/*		
-		if (showDetails) {
-			buf.append("<div id='feedback" + this.id + "'>");
-			buf.append("<FORM NAME=suggest" + this.id 
-					+ " onSubmit=\" return ajaxSubmit('/Feedback?UserRequest=ReportAProblem','" + this.id + "',document.suggest" + this.id + ".Notes.value,document.suggest" + this.id + ".Email.value); return false;\">"
-					+ "<INPUT TYPE=BUTTON VALUE='Report a problem with this question' "
-					+ "onClick=\"javascript:getElementById('form" + this.id + "').style.display='';this.style.display='none'\" />"
-					+ "<div id='form" + this.id + "' style='display: none'>");
-
-			buf.append("<span style=color:red><br/>");
-			switch (getQuestionType()) {
-			case 1: buf.append("Reminder: The correct answer is shown in bold print above."); break; // MULTIPLE_CHOICE
-			case 2: buf.append("Reminder: The correct answer is shown in bold print above."); break; // TRUE_FALSE
-			case 3: buf.append("Reminder: The correct answers are shown in bold print above. You must select all of them."); break; // SELECT_MULTIPLE
-			case 4: buf.append("Reminder: The correct answer will always form a complete, grammatically correct sentence."); break; // FILL_IN_WORD
-			case 5: // NUMERIC
-				switch (getNumericItemType()) {
-				case 0: buf.append("Reminder: Your answer must have exactly the same value as the correct answer."); break;
-				case 1: buf.append("Reminder: Your answer must have exactly the same value as the correct answer and must have " + significantFigures + " significant figures."); break;
-				case 2: buf.append("Reminder: Your answer must be within " + requiredPrecision + "% of the correct answer."); break;
-				case 3: buf.append("Reminder: Your answer must have " + significantFigures + " significant figures and be within " + requiredPrecision + "% of the correct answer."); break;
-				default:
-				}
-			default:
-			}		
-			buf.append("</span><br/>");
-
-			buf.append("Your Comment: <INPUT TYPE=TEXT SIZE=80 NAME=Notes /><br/>");
-			buf.append("Your Email: <INPUT TYPE=TEXT SIZE=50 PLACEHOLDER=' optional, if you want a response' NAME=Email /><br/>");
-			buf.append("<INPUT TYPE=SUBMIT NAME=SubmitButton VALUE='Submit Feedback' /></div></FORM><br/>");
-			buf.append("</div>");
-		}
-*/
 		return buf.toString(); 
 	}
 
