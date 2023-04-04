@@ -474,21 +474,14 @@ public class Question implements Serializable, Cloneable {
 		return buf.toString();
 	}
 
-	String printAllToStudents(String studentAnswer) {
-		return printAllToStudents(studentAnswer,true,"");
-	}
-	
-	String printAllToStudents(String studentAnswer,boolean showDetails) {
-		return printAllToStudents(studentAnswer,showDetails,"");
-	}
-	
-	String printAllToStudents(String studentAnswer,boolean showDetails,String showWork) {
+	String printAllToStudents(String studentAnswer,boolean showAnswer) {
 		// use this method to display an example of the question, correct answer and solution
 		// this differs from printAll() because only the first of several 
 		// correct fill-in-word answers is presented, and choices are not scrambled
 		// showDetails enables display of Solution to numeric problems (default = true)
 		StringBuffer buf = new StringBuffer("<a name=" + this.id + "></a>");
 		char choice = 'a';
+		boolean showDetails = true;
 		switch (getQuestionType()) {
 		case 1: // Multiple Choice
 			buf.append(text + "<br/>");
@@ -560,12 +553,13 @@ public class Question implements Serializable, Cloneable {
 			buf.append(parseString(text) + "<br/>");
 			break;
 		}
-		
-		buf.append("<br/>");
-		if (studentAnswer==null || studentAnswer.isEmpty()) buf.append("<b>No response was submitted for this question.</b><p></p>");
-		else {
-			switch (getQuestionType()) {
-			case 6: buf.append("<b>The answer submitted was:</b> " + studentAnswer + " stars<br/>");
+
+		if (showAnswer) {
+			buf.append("<br/>");
+			if (studentAnswer==null || studentAnswer.isEmpty()) buf.append("<b>No response was submitted for this question.</b><p></p>");
+			else {
+				switch (getQuestionType()) {
+				case 6: buf.append("<b>The answer submitted was:</b> " + studentAnswer + " stars<br/>");
 				int nStars = 0;
 				try { nStars = Integer.parseInt(studentAnswer); } catch (Exception e) {}
 				for (int i=1;i<6;i++) {
@@ -573,19 +567,21 @@ public class Question implements Serializable, Cloneable {
 				}
 				buf.append("<br/>");
 				break;
-			case 7: buf.append("<b>The answer submitted was: </b>" + studentAnswer); 
+				case 7: buf.append("<b>The answer submitted was: </b>" + studentAnswer); 
 				break;
-			default: buf.append("<b>The answer submitted was: " + studentAnswer + "</b>&nbsp;");
+				default: buf.append("<b>The answer submitted was: " + studentAnswer + "</b>&nbsp;");
+				}
+
+				if (correctAnswer != null && !correctAnswer.isEmpty()) {
+					if (this.isCorrect(studentAnswer)) buf.append("&nbsp;<IMG SRC=/images/checkmark.gif ALT='Check mark' align=bottom>");
+					else if (this.agreesToRequiredPrecision(studentAnswer)) buf.append("<IMG SRC=/images/partCredit.png ALT='minus 1 sig figs' align=middle>"
+							+ "<br/>Your answer must have exactly " + significantFigures + " significant digits.<br/>If your answer ends in a zero, then it must also have a decimal point to indicate which digits are significant.");
+					else buf.append("<IMG SRC=/images/xmark.png ALT='X mark' align=middle>");
+				}
+				buf.append("<br/><br/>");
 			}
-			
-			if (correctAnswer != null && !correctAnswer.isEmpty()) {
-				if (this.isCorrect(studentAnswer)) buf.append("&nbsp;<IMG SRC=/images/checkmark.gif ALT='Check mark' align=bottom>");
-				else if (this.agreesToRequiredPrecision(studentAnswer)) buf.append("<IMG SRC=/images/partCredit.png ALT='minus 1 sig figs' align=middle>"
-						+ "<br/>Your answer must have exactly " + significantFigures + " significant digits.<br/>If your answer ends in a zero, then it must also have a decimal point to indicate which digits are significant.");
-				else buf.append("<IMG SRC=/images/xmark.png ALT='X mark' align=middle>");
-			}
-			buf.append("<br/><br/>");
-		}
+		} else buf.append("<br/>");
+		
 		return buf.toString(); 
 	}
 

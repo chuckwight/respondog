@@ -201,13 +201,8 @@ public class Poll extends HttpServlet {
 				out.println(Subject.header() + editPage(user,a,request) + Subject.footer);
 				break;
 			case "SubmitResponses":
-				pt = submitResponses(user,a,request);
-				if (pt!=null && pt.completed!=null) {
-					out.println(Subject.header() + waitForResults(user,a) + Subject.footer);
-				}
-				else out.println(Subject.header() + Subject.banner 
-						+ "<h3>Sorry, the poll closed before you submitted your responses.</h3>" 
-						+ Subject.footer);
+				submitResponses(user,a,request);
+				out.println(Subject.header() + resultPage(user,a) + Subject.footer);
 				break;
 			case "AddQuestions":
 				if (!user.isInstructor()) break;
@@ -266,7 +261,7 @@ public class Poll extends HttpServlet {
 				+ "<span id=guestcode style='display:none' ><h2>The guest code for this poll is " + guestCode + "</h2></span>");
 		
 		buf.append("<br/><form method=post action=/Poll>"
-				+ "Title: <input type=text name=AssignmentTitle value='" + a.title + "' /> "
+				+ "Title: <input type=text name=AssignmentTitle placeholder='" + a.title + "' /> "
 				+ "<input type=hidden name=sig value=" + user.getTokenSignature() + " />"
 				+ "<input type=submit name=UserRequest value='Save New Title' />"
 				+ "</form><br/>");
@@ -330,7 +325,7 @@ public class Poll extends HttpServlet {
 					+ "</form><br/>");
 		}
 		
-		if (a.questionNumber==0) {  // Poll is just starting
+		if (a.questionNumber==null || a.questionNumber==0) {  // Poll is just starting
 			buf.append("Welcome, " + pt.nickname + ".<br/><br/>"
 				+ "The presenter should inform you when the poll is open.<br/>"
 				+ "At that time you can click the button below to view the first question.<br/><br/>");
@@ -411,12 +406,14 @@ public class Poll extends HttpServlet {
 		pt.nSubmissions++;
 		
 		Map<Key<Question>,Question> pollQuestions = ofy().load().keys(a.questionKeys);
+		for (Key<Question> k : a.questionKeys) {
+			Question q = pollQuestions.get(k);
+			pt.possibleScores.put(k,1000*q.pointValue);
+		}
 		
 		Key<Question> k = a.questionKeys.get(a.questionNumber);
-		
 		try {
 			Question q = pollQuestions.get(k);
-			pt.possibleScores.put(k,Integer.valueOf(1000*q.pointValue));
 			String studentAnswer = orderResponses(request.getParameterValues(Long.toString(k.getId())));
 			int score = 0;
 			if (!studentAnswer.isEmpty()) {
@@ -576,7 +573,7 @@ public class Poll extends HttpServlet {
 			
 			String userResponse = pt.responses==null?"":(pt.responses.get(k)==null?"":pt.responses.get(k));
 
-			buf.append("<div style='background-color:" + colors[a.questionNumber%6] + "; padding:15px;'>" + q.printAllToStudents(userResponse) + "</div>");
+			buf.append("<div style='background-color:" + colors[a.questionNumber%6] + "; padding:15px;'>" + q.printAllToStudents(userResponse,true) + "</div>");
 
 			// This is where we will construct a histogram showing the distribution of responses
 			buf.append("<h3>Summary of Group Results</h3>");		
@@ -608,8 +605,9 @@ public class Poll extends HttpServlet {
 			Question q = pollQuestions.get(k);
 			q.setParameters(a.id % Integer.MAX_VALUE);
 			if (q.correctAnswer==null) q.correctAnswer = "";
+			String userResponse = pt.responses==null?"":(pt.responses.get(k)==null?"":pt.responses.get(k));
 			buf.append("<LI><div style='background-color:" + colors[a.questionKeys.indexOf(k)%6] + "; padding:15px;'>");
-			buf.append(q.printAll());
+			buf.append(q.printAllToStudents(userResponse,!user.isInstructor()));
 			buf.append(getHistogram(q,pts));
 			buf.append("</div><br/></LI>");
 		}
@@ -642,7 +640,7 @@ public class Poll extends HttpServlet {
 			q.setParameters(a.id % Integer.MAX_VALUE);
 			if (q.correctAnswer==null) q.correctAnswer = "";
 			String userResponse = pt.responses==null?"":(pt.responses.get(k)==null?"":pt.responses.get(k));
-			buf.append("<div style='background-color:" + colors[a.questionKeys.indexOf(k)%6] + "; padding:15px;'>" + q.printAllToStudents(userResponse) + "</div>");
+			buf.append("<div style='background-color:" + colors[a.questionKeys.indexOf(k)%6] + "; padding:15px;'>" + q.printAllToStudents(userResponse,true) + "</div>");
 		}
 		return buf.toString();
 	}
