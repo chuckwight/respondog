@@ -422,8 +422,8 @@ public class Poll extends HttpServlet {
 			if (!studentAnswer.isEmpty()) {
 				pt.responses.put(k, studentAnswer);
 				q.setParameters(a.id % Integer.MAX_VALUE);
-				int multiplier = a.timeAllowed.get(a.questionNumber)>0?(int)(q.pointValue * (a.pollClosesAt.getTime() - pt.completed.getTime())/(a.timeAllowed.get(a.questionNumber))):1000;
-				score = q.isCorrect(studentAnswer) || !q.hasACorrectAnswer()?q.pointValue * multiplier:0;
+				int timeDependent = a.timeAllowed.get(a.questionNumber)>0?(int)(q.pointValue * (a.pollClosesAt.getTime() - pt.completed.getTime())/(10*a.timeAllowed.get(a.questionNumber))):100;
+				score = q.isCorrect(studentAnswer) || !q.hasACorrectAnswer()?q.pointValue * (900 + timeDependent):0;
 			}
 			pt.scores.put(k,Integer.valueOf(score));
 			ofy().save().entity(pt).now();

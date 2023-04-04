@@ -1,0 +1,6 @@
+indexes:
+
+- kind: PollTransaction
+  properties:
+  - name: assignmentId
+  - name: completed
