@@ -1,5 +1,5 @@
 /*  ChemVantage - A Java web application for online learning
-*   Copyright (C) 2020 ChemVantage LLC
+*   Copyright (C) 2023 ChemVantage LLC
 *   
 *    This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -87,7 +87,7 @@ public class Poll extends HttpServlet {
 				if (user.isInstructor()) out.println(Subject.header() + allResultsPage(user,a) + Subject.footer);
 				break;
 			case "ShowSummary":
-				out.println(Subject.header("Your Class ChemVantage Scores") + showSummary(user,request) + Subject.footer);
+				out.println(Subject.header("Your Group ResponDog Scores") + showSummary(user,request) + Subject.footer);
 				break;
 			case "Review":
 				String forUserHashedId = request.getParameter("ForUserHashedId");
@@ -217,7 +217,7 @@ public class Poll extends HttpServlet {
 			case "Save New Title":
 				a.title = request.getParameter("AssignmentTitle");
 				ofy().save().entity(a).now();
-				out.println(Subject.header("ChemVantage Instructor Page") + instructorPage(user,a,request) + Subject.footer);
+				out.println(Subject.header("ResponDog Presenter Page") + instructorPage(user,a,request) + Subject.footer);
 			break;
 			case "View the Poll Results":
 				out.println(Subject.header() + resultPage(user,a) + Subject.footer);
@@ -260,10 +260,11 @@ public class Poll extends HttpServlet {
 				+ "<a href=# onclick=document.getElementById('guestcode').style.display='inline' >the guest code for this poll</a>.<br/>"
 				+ "<span id=guestcode style='display:none' ><h2>The guest code for this poll is " + guestCode + "</h2></span>");
 		
-		buf.append("<br/><form method=post action=/Poll>"
+		buf.append("<br/><form method=post action=/Poll onsubmit=document.getElementById('sbmt1').disabled=true; >"
 				+ "Title: <input type=text name=AssignmentTitle placeholder='" + a.title + "' /> "
 				+ "<input type=hidden name=sig value=" + user.getTokenSignature() + " />"
-				+ "<input type=submit name=UserRequest value='Save New Title' />"
+				+ "<input type=hidden name=UserRequest value='Save New Title' />"
+				+ "<input type=submit id=sbmt1 value='Save New Title' />"
 				+ "</form><br/>");
 		
 		buf.append("You may <a href=/Poll?UserRequest=EditPoll&sig=" + user.getTokenSignature() + ">review and edit the questions for this poll</a>.<br/><br/>");
@@ -282,27 +283,27 @@ public class Poll extends HttpServlet {
 			}
 		}
 		PollTransaction pt = getPollTransaction(user,a);
-		buf.append("<form method=post action=/Poll>"
+		buf.append("<form method=post action=/Poll onsubmit=document.getElementById('sbmt2').disabled=true; >"
 				+ "Choose a nickname: " 
 				+ "<input type=text size=15 name=Nickname placeholder='" + Question.quot2html(pt.nickname) + "' /> "
 				+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
 				+ "<input type=hidden name=UserRequest value=SetNickname />"
-				+ "<input type=submit />"
+				+ "<input id=sbmt2 type=submit />"
 				+ "</form><br/>");
 		
 		if (a.pollIsClosed) { 
-			buf.append("<form method=post action=/Poll>"
+			buf.append("<form method=post action=/Poll onsubmit=document.getElementById('sbmt3').disabled=true; >"
 				+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
 				+ "<input type=hidden name=UserRequest value=NextQuestion />"
 				+ "<input type=hidden name=QuestionNumber value=0 />"
-				+ "<input type=submit value='Start the Poll' />"
+				+ "<input type=submit id=sbmt3 value='Start the Poll' />"
 				+ "</form><br/><br/>");
 		} else {
-			buf.append("<form method=post action=/Poll>"
+			buf.append("<form method=post action=/Poll onsubmit=document.getElementById('sbmt4').disabled=true; >"
 					+ "<b>The poll is open.</b>"
 					+ "<input type=hidden name=sig value=" + user.getTokenSignature() + " />"
 					+ "<input type=hidden name=UserRequest value=ClosePoll />"
-					+ "<input type=submit value='Close the Poll' />"
+					+ "<input id=sbmt4 type=submit value='Close the Poll' />"
 					+ "</form><br/><br/>");
 		}
 		return buf.toString();
@@ -316,12 +317,12 @@ public class Poll extends HttpServlet {
 		buf.append("<h2>The poll is closed. Please wait.</h2>");
 		
 		if ("anonymous".equals(pt.nickname)) {
-			buf.append("<form method=post action=/Poll>"
+			buf.append("<form method=post action=/Poll onsubmit=document.getElementById('sbmt1').disabled=true; >"
 					+ "Choose a nickname: " 
 					+ "<input type=text size=15 name=Nickname placeholder='" + Question.quot2html(pt.nickname) + "' /> "
 					+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
 					+ "<input type=hidden name=UserRequest value=SetNickname />"
-					+ "<input type=submit />"
+					+ "<input id=sbmt1 type=submit />"
 					+ "</form><br/>");
 		}
 		
@@ -335,9 +336,9 @@ public class Poll extends HttpServlet {
 				+ "At that time you can click the button below to view the next question.<br/><br/>");
 		}
 		
-		buf.append("<form method=get action=/Poll />"
+		buf.append("<form method=get action=/Poll onsubmit=document.getElementById('sbmt2').disabled=true; />"
 				+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
-				+ "<input type=submit value='View the Poll' /> "
+				+ "<input id=sbmt2 type=submit value='View the Poll' /> "
 				+ "</form><br/><br/>");
 		return buf.toString();
 	}
@@ -353,18 +354,18 @@ public class Poll extends HttpServlet {
 			StringBuffer buf = new StringBuffer();
 
 			if (user.isInstructor()) {
-				buf.append("<form method=post action='/Poll' style='display:inline'>"
+				buf.append("<form method=post action='/Poll' style='display:inline' onsubmit=document.getElementById('sbmt1').disabled=true; >"
 						+ "<b>Please tell your audience that the poll is now open so they can view the poll questions.</b><br/>"
 						+ "<span id='timer0' style='color: #EE0000'></span>&nbsp;"
 						+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
 						+ "<input type=hidden name=UserRequest value='ShowResults' />"
-						+ "<input type=submit value='Stop Now and Show Results' />"
+						+ "<input id=sbmt1 type=submit value='Stop Now and Show Results' />"
 						+ "</form><br/><br/>");
 			} else buf.append("<span id='timer0' style='color: #EE0000'></span>");
 			
 			//buf.append("<h2>" + a.title + "</h2>");
 			
-			buf.append("<form id=pollForm method=post action='/Poll'>"  // onSubmit='return confirmSubmission(" + a.questionKeys.size() + ")'>"
+			buf.append("<form id=pollForm method=post action='/Poll' onsubmit=document.getElementById('sbmt2').disabled=true; >"
 					+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />");
 
 			// see if this user already has a submission for this assignment; else get a new PollTransaction
@@ -387,7 +388,7 @@ public class Poll extends HttpServlet {
 			
 			buf.append("<input type=hidden name=PossibleScore value='" + possibleScore + "' />");
 			buf.append("<input type=hidden name=UserRequest value='SubmitResponses' />");
-			buf.append("<input type=submit id=pollSubmit />");
+			buf.append("<input type=submit id=sbmt2 />");
 			buf.append("</form><br/><br/>");
 
 			if (a.pollClosesAt != null && a.pollClosesAt.after(new Date())) buf.append("<script>startTimer(" + (a.pollClosesAt.getTime()-(user.isInstructor()?0L:3000L)) + ");</script>");
@@ -462,11 +463,11 @@ public class Poll extends HttpServlet {
 		buf.append("<h3>Please wait for the poll to close.</h3>"
 				+ (a.pollClosesAt != null?"<div id='timer0' style='color: #EE0000'></div><br/>":""));
 		
-		buf.append("<form id=pollForm method=post action='/Poll' >"
+		buf.append("<form id=pollForm method=post action='/Poll' onsubmit=document.getElementById('sbmt1').disabled=true; >"
 				+ (user.isInstructor()?"Whenever submissions are complete, you can ":"")
 				+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
 				+ "<input type=hidden name=UserRequest value='ShowResults' />"
-				+ "<input type=submit value='" + (user.isInstructor()?"Close and Show the Results":"View the Poll Results") + "' /> ");
+				+ "<input type=submit id=sbmt1 value='" + (user.isInstructor()?"Close and Show the Results":"View the Poll Results") + "' /> ");
 		buf.append("</form><br/><br/>");
 
 		if (!a.pollIsClosed && a.pollClosesAt != null) {
@@ -536,27 +537,20 @@ public class Poll extends HttpServlet {
 			if (!a.pollIsClosed) return waitForResults(user,a);
 
 			if (user.isInstructor()) {
-				if (a.questionNumber<a.questionKeys.size()-1) buf.append("<form method=post action=/Poll>");
-				
 				if (a.timeAllowed.isEmpty() || a.timeAllowed.size()<a.questionNumber-1 || a.timeAllowed.get(a.questionNumber)==null || a.timeAllowed.get(a.questionNumber)==0) {
-					buf.append("<b>Please tell your audience that they can view the poll results.</b><br/>");
+					buf.append("<b>Please tell your audience that they can view the poll results.</b>");
 				}
-				if (a.questionNumber<a.questionKeys.size()-1) {
-					buf.append("<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
-							+ "<input type=hidden name=UserRequest value=NextQuestion />"
-							+ "<input type=hidden name=QuestionNumber value=" + (a.questionNumber+1) + " />"
-							+ "When ready, you may <input type=submit value='Start the Next Question' />"
-							+ "</form>");
-				} else {
-					buf.append("<form method=get action=/Poll>"
-							+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
-							+ "<input type=submit name=UserRequest value='" + (a.questionNumber<a.questionKeys.size()-1?"Show the Next Question":"Finish") + "' />"
-							+ "</form>");
-				}
-			} else { // participant button to continue
-				buf.append("<form method=get action=/Poll>"
+				buf.append("<form method=post action=/Poll onsubmit=document.getElementById('sbmt2').disabled=true; >"
 						+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
-						+ "<input type=submit name=UserRequest value='" + (a.questionNumber<a.questionKeys.size()-1?"Show the Next Question":"Finish") + "' />"
+						+ "<input type=hidden name=QuestionNumber value=" + (a.questionNumber+1) + " />"
+						+ "<input type=hidden name=UserRequest value='" + (a.questionNumber<a.questionKeys.size()-1?"NextQuestion":"Finish") + "' />"
+						+ "<input type=submit id=sbmt2 value='" + (a.questionNumber<a.questionKeys.size()-1?"Show the Next Question":"Finish") + "' />"
+						+ "</form>");
+			} else { // participant button to continue
+				buf.append("<form method=get action=/Poll onsubmit=document.getElementById('sbmt3').disabled=true; >"
+						+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
+						+ "<input type=hidden name=UserRequest value='" + (a.questionNumber<a.questionKeys.size()-1?"Show the Next Question":"Finish") + "' />"
+						+ "<input type=submit id=sbmt3 value='" + (a.questionNumber<a.questionKeys.size()-1?"Show the Next Question":"Finish") + "' />"
 						+ "</form>");
 			}
 			debug.append("b.");
@@ -1354,7 +1348,7 @@ public class Poll extends HttpServlet {
 			Map<String,PollTransaction> ptsMap = new HashMap<String,PollTransaction>();
 			for (PollTransaction pt : ptsList) ptsMap.put(pt.userId,pt);
 			
-			buf.append("<table><tr><th>&nbsp;</th><th>Name</th><th>Email</th><th>Role</th><th>LMS Score</th><th>CV Score</th><th>Scores Detail</th></tr>");
+			buf.append("<table><tr><th>&nbsp;</th><th>Name</th><th>Email</th><th>Role</th><th>LMS Score</th><th>Poll Score</th><th>Scores Detail</th></tr>");
 			int i=0;
 			boolean synched = true;
 			for (Map.Entry<String,String[]> entry : membership.entrySet()) {
@@ -1372,7 +1366,7 @@ public class Poll extends HttpServlet {
 						+ "<td align=center>" + (cvScore == null?" - ":String.valueOf(cvScore.getPctScore()) + "%") + "</td>"
 						+ "<td align=center>" + (cvScore == null?" - ":"<a href=/Poll?UserRequest=Review&sig=" + user.getTokenSignature() + "&ForUserHashedId=" + forUserHashedId + "&ForUserName=" + entry.getValue()[1].replaceAll(" ","+") + ">show</a>") + "</td>"
 						+ "</tr>");
-				// Flag this score set as unsynchronized only if there is one or more non-null ChemVantage Learner score that is not equal to the LMS score
+				// Flag this score set as unsynchronized only if there is one or more non-null ResponDog Learner score that is not equal to the LMS score
 				// Ignore Instructor scores because the LMS often does not report them, and ignore null cvScore entities because they cannot be reported.
 				synched = synched && (!"Learner".equals(entry.getValue()[0]) || (cvScore!=null?String.valueOf(cvScore.getPctScore()).equals(s):true));
 			}
@@ -1393,7 +1387,7 @@ public class Poll extends HttpServlet {
 			buf.append("</table><br/>");
 			if (!synched) {
 				buf.append("If any of the Learner scores above are not synchronized, you may use the button below to launch a background task " 
-						+ "where ChemVantage will resubmit them to your LMS. This can take several seconds to minutes depending on the "
+						+ "where ResponDog will resubmit them to your LMS. This can take several seconds to minutes depending on the "
 						+ "number of scores to process. Please note that you may have to adjust the settings in your LMS to accept the "
 						+ "revised scores. For example, in Canvas you may need to change the assignment settings to Unlimited Submissions. "
 						+ "This may also cause the submission to be counted as late if the LMS assignment deadline has passed.<br/>"
