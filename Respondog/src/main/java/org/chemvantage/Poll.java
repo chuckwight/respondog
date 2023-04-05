@@ -353,43 +353,41 @@ public class Poll extends HttpServlet {
 
 			StringBuffer buf = new StringBuffer();
 
+			// see if this user already has a submission for this assignment; else get a new PollTransaction
+			PollTransaction pt = getPollTransaction(user,a);
+			Map<Key<Question>,Question> pollQuestions = ofy().load().keys(a.questionKeys);
+
+			Key<Question> k = a.questionKeys.get(a.questionNumber);
+			
 			if (user.isInstructor()) {
 				buf.append("<form method=post action='/Poll' style='display:inline' onsubmit=document.getElementById('sbmt1').disabled=true; >"
 						+ "<b>Please tell your audience that the poll is now open so they can view the poll questions.</b><br/>"
-						+ "<span id='timer0' style='color: #EE0000'></span>&nbsp;"
+						+ "<span id='timer0' style='color: #EE0000'></span>" 
+						+ (a.timeAllowed.get(a.questionKeys.indexOf(k))>0?"&nbsp;or&nbsp;":"")
 						+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
 						+ "<input type=hidden name=UserRequest value='ShowResults' />"
 						+ "<input id=sbmt1 type=submit value='Stop Now and Show Results' />"
 						+ "</form><br/><br/>");
 			} else buf.append("<span id='timer0' style='color: #EE0000'></span>");
 			
-			//buf.append("<h2>" + a.title + "</h2>");
-			
 			buf.append("<form id=pollForm method=post action='/Poll' onsubmit=document.getElementById('sbmt2').disabled=true; >"
 					+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />");
 
-			// see if this user already has a submission for this assignment; else get a new PollTransaction
-			PollTransaction pt = getPollTransaction(user,a);
-			Map<Key<Question>,Question> pollQuestions = ofy().load().keys(a.questionKeys);
-
-			Key<Question> k = a.questionKeys.get(a.questionNumber);
 			Question q = pollQuestions.get(k); // this should nearly always work
 			q.setParameters(a.id % Integer.MAX_VALUE);
 			String studentResponse = pt.responses.get(k);
 			if (studentResponse==null) studentResponse = "";
 			
-			buf.append("<div style='font-size:1.5em; background-color:" + colors[a.questionNumber%6] + "; padding:15px;'>" + q.print(null,studentResponse) + "</div>");
+			buf.append("<div style='font-size:1.5em; background-color:" + colors[a.questionNumber%6] + "; padding:15px;'>" + q.print(null,studentResponse));
 			
 			int possibleScore = q.pointValue*1000;
-			//possibleScore += q.correctAnswer==null || q.correctAnswer.isEmpty()?0:q.pointValue;
-
 
 			buf.append(timer(user));
 			
 			buf.append("<input type=hidden name=PossibleScore value='" + possibleScore + "' />");
 			buf.append("<input type=hidden name=UserRequest value='SubmitResponses' />");
-			buf.append("<input type=submit id=sbmt2 />");
-			buf.append("</form><br/><br/>");
+			buf.append("<input type=submit style='font-size:1em' id=sbmt2 />");
+			buf.append("</form><br/><br/></div>");
 
 			if (a.pollClosesAt != null && a.pollClosesAt.after(new Date())) buf.append("<script>startTimer(" + (a.pollClosesAt.getTime()-(user.isInstructor()?0L:3000L)) + ");</script>");
 
@@ -544,6 +542,7 @@ public class Poll extends HttpServlet {
 						+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
 						+ "<input type=hidden name=QuestionNumber value=" + (a.questionNumber+1) + " />"
 						+ "<input type=hidden name=UserRequest value='" + (a.questionNumber<a.questionKeys.size()-1?"NextQuestion":"Finish") + "' />"
+						+ "When you are ready &rarr; "
 						+ "<input type=submit id=sbmt2 value='" + (a.questionNumber<a.questionKeys.size()-1?"Show the Next Question":"Finish") + "' />"
 						+ "</form>");
 			} else { // participant button to continue

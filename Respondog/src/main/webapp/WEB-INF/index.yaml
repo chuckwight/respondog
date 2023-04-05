@@ -4,3 +4,9 @@ indexes:
   properties:
   - name: assignmentId
   - name: completed
+
+- kind: PollTransaction
+  properties:
+  - name: assignmentId
+  - name: userId
+  
