@@ -1348,6 +1348,12 @@ public class Poll extends HttpServlet {
 				keys.put(id,Key.create(Key.create(User.class,Subject.hashId(platform_id+id)),Score.class,a.id));
 			}
 			Map<Key<Score>,Score> cvScores = ofy().load().keys(keys.values());
+			
+			// Make a map of all PollTransactions using the users' hashedId values as a key;
+			List<PollTransaction> ptsList = ofy().load().type(PollTransaction.class).filter("assignmentId",a.id).list();
+			Map<String,PollTransaction> ptsMap = new HashMap<String,PollTransaction>();
+			for (PollTransaction pt : ptsList) ptsMap.put(pt.userId,pt);
+			
 			buf.append("<table><tr><th>&nbsp;</th><th>Name</th><th>Email</th><th>Role</th><th>LMS Score</th><th>CV Score</th><th>Scores Detail</th></tr>");
 			int i=0;
 			boolean synched = true;
@@ -1356,6 +1362,7 @@ public class Poll extends HttpServlet {
 				String s = scores.get(entry.getKey());
 				Score cvScore = cvScores.get(keys.get(entry.getKey()));
 				String forUserHashedId = Subject.hashId(platform_id + entry.getKey());  // only send hashed values through links
+				ptsMap.remove(forUserHashedId);
 				i++;
 				buf.append("<tr><td>" + i + ".&nbsp;</td>"
 						+ "<td>" + entry.getValue()[1] + "</td>"
@@ -1368,6 +1375,20 @@ public class Poll extends HttpServlet {
 				// Flag this score set as unsynchronized only if there is one or more non-null ChemVantage Learner score that is not equal to the LMS score
 				// Ignore Instructor scores because the LMS often does not report them, and ignore null cvScore entities because they cannot be reported.
 				synched = synched && (!"Learner".equals(entry.getValue()[0]) || (cvScore!=null?String.valueOf(cvScore.getPctScore()).equals(s):true));
+			}
+			// Continue to the table by finding and including any guest participants
+			for (Map.Entry<String,PollTransaction> entry : ptsMap.entrySet()) {
+				i++;
+				PollTransaction pt = entry.getValue();
+				int scorePct = pt.compileScore(a.questionKeys)*100/pt.compilePossibleScore(a.questionKeys);
+				buf.append("<tr><td>" + i + ".&nbsp;</td>"
+						+ "<td>" + entry.getValue().nickname + "</td>"
+						+ "<td align=center> - </td>"
+						+ "<td>Guest</td>"
+						+ "<td align=center> - </td>"
+						+ "<td align=center>" + scorePct + "%</td>"
+						+ "<td align=center><a href=/Poll?UserRequest=Review&sig=" + user.getTokenSignature() + "&ForUserHashedId=" + pt.userId + "&ForUserName=" + pt.nickname + ">show</a></td>"
+						+ "</tr>");
 			}
 			buf.append("</table><br/>");
 			if (!synched) {
