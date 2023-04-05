@@ -573,7 +573,7 @@ public class Poll extends HttpServlet {
 			
 			String userResponse = pt.responses==null?"":(pt.responses.get(k)==null?"":pt.responses.get(k));
 
-			buf.append("<div style='background-color:" + colors[a.questionNumber%6] + "; padding:15px;'>" + q.printAllToStudents(userResponse,true) + "</div>");
+			buf.append("<div style='background-color:" + colors[a.questionNumber%6] + "; padding:15px;'>" + q.printAllToStudents(userResponse,user.isInstructor()) + "</div>");
 
 			// This is where we will construct a histogram showing the distribution of responses
 			buf.append("<h3>Summary of Group Results</h3>");		
@@ -640,7 +640,7 @@ public class Poll extends HttpServlet {
 			q.setParameters(a.id % Integer.MAX_VALUE);
 			if (q.correctAnswer==null) q.correctAnswer = "";
 			String userResponse = pt.responses==null?"":(pt.responses.get(k)==null?"":pt.responses.get(k));
-			buf.append("<div style='background-color:" + colors[a.questionKeys.indexOf(k)%6] + "; padding:15px;'>" + q.printAllToStudents(userResponse,true) + "</div>");
+			buf.append("<div style='background-color:" + colors[a.questionKeys.indexOf(k)%6] + "; padding:15px;'>" + q.printAllToStudents(userResponse,user.isInstructor()) + "</div>");
 		}
 		return buf.toString();
 	}
