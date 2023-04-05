@@ -607,7 +607,7 @@ public class Poll extends HttpServlet {
 			if (q.correctAnswer==null) q.correctAnswer = "";
 			String userResponse = pt.responses==null?"":(pt.responses.get(k)==null?"":pt.responses.get(k));
 			buf.append("<LI><div style='background-color:" + colors[a.questionKeys.indexOf(k)%6] + "; padding:15px;'>");
-			buf.append(q.printAllToStudents(userResponse,!user.isInstructor()));
+			buf.append(q.printAllToStudents(userResponse,user.isInstructor()));
 			buf.append(getHistogram(q,pts));
 			buf.append("</div><br/></LI>");
 		}
