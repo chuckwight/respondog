@@ -26,6 +26,7 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -39,7 +40,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import com.google.appengine.api.taskqueue.QueueFactory;
-import com.google.gson.JsonObject;
 import com.googlecode.objectify.Key;
 
 @WebServlet(urlPatterns={"/Poll","/poll"})
@@ -447,7 +447,7 @@ public class Poll extends HttpServlet {
 		return pt;
 	}
 	
-	private static String waitForResults(User user, Assignment a) {
+	private String waitForResults(User user, Assignment a) {
 		
 		if (a.pollIsClosed) return resultPage(user,a);
 		if (user.isInstructor() && a.pollClosesAt!=null && a.pollClosesAt.before(new Date())) {
@@ -523,7 +523,7 @@ public class Poll extends HttpServlet {
 				+ "</SCRIPT>";
 	}
 	
-	private static String resultPage(User user,Assignment a) {
+	private String resultPage(User user,Assignment a) {
 		// This method shows the participant a narrow stack of
 		// - the current scored question
 		// - current status of the leader board
@@ -638,30 +638,18 @@ public class Poll extends HttpServlet {
 		return buf.toString();
 	}
 	
-	private static String getLeaderBoard(Assignment a,PollTransaction pt,List<PollTransaction> pts) {
+	private String getLeaderBoard(Assignment a,PollTransaction pt,List<PollTransaction> pts) {
 		StringBuffer buf = new StringBuffer();
-		List<JsonObject> leaderboard = new ArrayList<JsonObject>();
+		List<PollTransaction> leaderboard = new ArrayList<PollTransaction>(pts);  // clone the PollTransaction List
+		Collections.sort(leaderboard,new SortByScore());
 		int boardsize = pts.size()<4?1:(pts.size()==4?2:3);
-		for (PollTransaction t : pts) {
-			int score = t.compileScore(a.questionKeys);
-			int newPosition = 0;
-			for (JsonObject leader : leaderboard) {
-				if (score < leader.get("score").getAsInt()) newPosition = leaderboard.indexOf(leader);
-				else if (leaderboard.indexOf(leader)==leaderboard.size()-1) newPosition = leaderboard.size();
-			}
-			if (newPosition>0 || leaderboard.size()<boardsize) {
-				JsonObject participant = new JsonObject();
-				participant.addProperty("nickname", t.nickname);
-				participant.addProperty("score",score);
-				leaderboard.add(newPosition,participant);
-				if (leaderboard.size()>boardsize) leaderboard.remove(0);
-			}
-		}
+		
+		leaderboard.subList(boardsize,leaderboard.size()).clear();  // eliminates all but the top scorers
+		
 		buf.append("After " + (a.questionNumber+1) + " question" + (a.questionNumber+1>1?"s":"") + ", the leaders are:<br/>");
 		buf.append("<OL>");
-		for (int l=leaderboard.size()-1;l>=0;l--) {
-			JsonObject leader = leaderboard.get(l).getAsJsonObject();
-			buf.append("<LI>" + leader.get("nickname").getAsString() + "&nbsp;&rarr;&nbsp;" + leader.get("score").getAsString() + " pts</LI>");
+		for (PollTransaction t : leaderboard) {
+			buf.append("<LI>" + t.nickname + "&nbsp;&rarr;&nbsp;" + t.compileScore(a.questionKeys) + " pts</LI>");
 		}
 		buf.append("</OL>");
 	
@@ -1450,6 +1438,29 @@ public class Poll extends HttpServlet {
 			a.timeAllowed.set(i,seconds);
 			ofy().save().entity(a).now();
 		} catch (Exception e) {			
+		}
+	}
+	
+	class SortByScore implements Comparator<PollTransaction> {
+		
+		SortByScore() {}
+		
+		Map<Long,Assignment> assignments = new HashMap<Long,Assignment>();
+		
+		public int compare(PollTransaction t1, PollTransaction t2) {
+			Assignment a = getAssignment(t1.assignmentId);
+			int score1 = t1.compileScore(a.questionKeys);
+			int score2 = t2.compileScore(a.questionKeys);
+			return score2-score1;
+		}
+		
+		private Assignment getAssignment(Long id) {
+			Assignment a = assignments.get(id);
+			if (a==null) {
+				a = ofy().load().type(Assignment.class).id(id).now();
+				assignments.put(id, a);
+			}
+			return a;
 		}
 	}
 }
