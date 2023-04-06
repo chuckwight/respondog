@@ -283,7 +283,7 @@ public class Poll extends HttpServlet {
 			}
 		}
 		PollTransaction pt = getPollTransaction(user,a);
-		buf.append("<form method=post action=/Poll onsubmit=document.getElementById('sbmt2').disabled=true; >"
+		buf.append("<form method=post action=/Poll >"
 				+ "Choose a nickname: " 
 				+ "<input type=text size=15 name=Nickname placeholder='" + Question.quot2html(pt.nickname) + "' /> "
 				+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
@@ -292,11 +292,13 @@ public class Poll extends HttpServlet {
 				+ "</form><br/>");
 		
 		if (a.pollIsClosed) { 
-			buf.append("<form method=post action=/Poll onsubmit=document.getElementById('sbmt3').disabled=true; >"
+			buf.append("<form id=form3 method=post action=/Poll target=_respondog "
+					+ "onsubmit=document.getElementById('sbmt3').disabled=true;document.getElementById('advc3').style='display:inline'; >"
 				+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
 				+ "<input type=hidden name=UserRequest value=NextQuestion />"
 				+ "<input type=hidden name=QuestionNumber value=0 />"
-				+ "<input type=submit id=sbmt3 value='Start the Poll' />"
+				+ "<input type=submit id=sbmt3 value='Start the Poll' /> "
+				+ "<span id=advc3 style='display:none;'>The poll was opened in a separate window.</span>"
 				+ "</form><br/><br/>");
 		} else {
 			buf.append("<form method=post action=/Poll onsubmit=document.getElementById('sbmt4').disabled=true; >"
@@ -317,7 +319,7 @@ public class Poll extends HttpServlet {
 		buf.append("<h2>The poll is closed. Please wait.</h2>");
 		
 		if ("anonymous".equals(pt.nickname)) {
-			buf.append("<form method=post action=/Poll onsubmit=document.getElementById('sbmt1').disabled=true; >"
+			buf.append("<form method=post action=/Poll target=_respondog onsubmit=document.getElementById('sbmt1').disabled=true; >"
 					+ "Choose a nickname: " 
 					+ "<input type=text size=15 name=Nickname placeholder='" + Question.quot2html(pt.nickname) + "' /> "
 					+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
@@ -336,9 +338,11 @@ public class Poll extends HttpServlet {
 				+ "At that time you can click the button below to view the next question.<br/><br/>");
 		}
 		
-		buf.append("<form method=get action=/Poll onsubmit=document.getElementById('sbmt2').disabled=true; />"
+		buf.append("<form method=get action=/Poll target=_respondog "
+				+ "onsubmit=document.getElementById('sbmt2').disabled=true;document.getElementById('advc2').style='display:inline'; />"
 				+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
 				+ "<input id=sbmt2 type=submit value='View the Poll' /> "
+				+ "<span id=advc2 style=display:none;>The poll was opened in a separate window.</span>"
 				+ "</form><br/><br/>");
 		return buf.toString();
 	}
@@ -360,7 +364,7 @@ public class Poll extends HttpServlet {
 			Key<Question> k = a.questionKeys.get(a.questionNumber);
 			
 			if (user.isInstructor()) {
-				buf.append("<form method=post action='/Poll' style='display:inline' onsubmit=document.getElementById('sbmt1').disabled=true; >"
+				buf.append("<form method=post action='/Poll' target=_respondog style='display:inline' onsubmit=document.getElementById('sbmt1').disabled=true; >"
 						+ "<b>Please tell your audience that the poll is now open so they can view the poll questions.</b><br/>"
 						+ "<span id='timer0' style='color: #EE0000'></span>" 
 						+ (a.timeAllowed.get(a.questionKeys.indexOf(k))>0?"&nbsp;or&nbsp;":"")
