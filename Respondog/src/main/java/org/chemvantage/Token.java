@@ -39,6 +39,7 @@ public class Token extends HttpServlet {
 			if (target_link_uri == null) throw new Exception("Missing required target_link_uri parameter.");
 			
 			String deployment_id = request.getParameter("lti_deployment_id");
+			if (deployment_id==null) deployment_id = request.getParameter("login_hint");  // schoology!
 			//debug.append("deployment_id=" + deployment_id + " ");
 			
 			String client_id = request.getParameter("client_id");
