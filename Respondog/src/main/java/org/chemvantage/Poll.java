@@ -648,6 +648,8 @@ public class Poll extends HttpServlet {
 		Collections.sort(leaderboard,new SortByScore());
 		int boardsize = pts.size()<4?1:(pts.size()==4?2:3);
 		
+		if (leaderboard.size()==0) return "There are no submissions yet.";
+		
 		leaderboard.subList(boardsize,leaderboard.size()).clear();  // eliminates all but the top scorers
 		
 		buf.append("After " + (a.questionNumber+1) + " question" + (a.questionNumber+1>1?"s":"") + ", the leaders are:<br/>");
