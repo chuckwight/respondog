@@ -292,7 +292,7 @@ public class Poll extends HttpServlet {
 				+ "</form><br/>");
 		
 		if (a.pollIsClosed) { 
-			buf.append("<form method=post action=/Poll onsubmit=document.getElementById('sbmt3').disabled=true; >"
+			buf.append("<form method=post action=/Poll target=_chemvantage onsubmit=document.getElementById('sbmt3').disabled=true; >"
 				+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
 				+ "<input type=hidden name=UserRequest value=NextQuestion />"
 				+ "<input type=hidden name=QuestionNumber value=0 />"
@@ -336,7 +336,7 @@ public class Poll extends HttpServlet {
 				+ "At that time you can click the button below to view the next question.<br/><br/>");
 		}
 		
-		buf.append("<form method=get action=/Poll onsubmit=document.getElementById('sbmt2').disabled=true; />"
+		buf.append("<form method=get action=/Poll target=_chemvantage onsubmit=document.getElementById('sbmt2').disabled=true; />"
 				+ "<input type=hidden name=sig value='" + user.getTokenSignature() + "' />"
 				+ "<input id=sbmt2 type=submit value='View the Poll' /> "
 				+ "</form><br/><br/>");
