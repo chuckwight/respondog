@@ -376,7 +376,7 @@ public class LTIRegistration extends HttpServlet {
 				oauth_access_token_url = "https://developer.blackboard.com/api/v1/gateway/oauth2/jwttoken";
 				break;
 			case "schoology":
-				//client_id = (iss.equals("https://www.chemvantage.org")?"6558245496":"");
+				client_id = (iss.equals("https://respondog.com")?"6643218552":"");
 				platform_id = "https://schoology.schoology.com";
 				oidc_auth_url = "https://lti-service.svc.schoology.com/lti-service/authorize-redirect";
 				well_known_jwks_url = "https://lti-service.svc.schoology.com/lti-service/.well-known/jwks";
