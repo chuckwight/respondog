@@ -223,7 +223,7 @@ public class Feedback extends HttpServlet {
 		
 			if (email==null) buf.append("We will review your comment, but we're unable to provide a response because you did not provide an email address.<p>");
 			else buf.append("We will review your comment. Any response will be sent to " + email + ".<p>");
-			buf.append("Feel free to email any additional comments to <a href=mailto:admin@respondog.com>admin@respondog.com</a><p>");
+			buf.append("Feel free to email any additional comments to <a href=mailto:admin@chemvantage.org>admin@chemvantage.org</a><p>");
 		}
 		
 		if (user.isAnonymous()) buf.append("<p><a href=Home>Return to the Home page</a><br>");
@@ -267,9 +267,9 @@ public class Feedback extends HttpServlet {
 
 		try {
 			Message msg = new MimeMessage(session);
-			msg.setFrom(new InternetAddress("admin@respondog.com", "ResponDog"));
+			msg.setFrom(new InternetAddress("admin@chemvantage.org", "ResponDog"));
 			msg.addRecipient(Message.RecipientType.TO,
-					new InternetAddress("admin@respondog.com", "ResponDog"));
+					new InternetAddress("admin@chemvantage.org", "ResponDog"));
 			msg.setSubject("ResponDog Feedback Report");
 			msg.setContent(message,"text/html");
 			Transport.send(msg);

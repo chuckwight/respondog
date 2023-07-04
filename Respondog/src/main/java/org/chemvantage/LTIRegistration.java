@@ -177,7 +177,7 @@ public class LTIRegistration extends HttpServlet {
 						+ "URL: " + request.getParameter("url") + "<br/>"
 						+ "LMS: " + request.getParameter("lms") + "<br/>"
 						+ debug.toString();
-				if (dynamicRegistration) sendEmail("ResponDog Administrator","admin@respondog.com","Dynamic Registration Error",message);
+				if (dynamicRegistration) sendEmail("ResponDog Administrator","admin@chemvantage.org","Dynamic Registration Error",message);
 			} catch (Exception e1) {
 				e1.printStackTrace();
 			}
@@ -295,7 +295,7 @@ public class LTIRegistration extends HttpServlet {
 					+ "administrators is always free. ");
 		}
 		
-		buf.append("If you have questions or require assistance, please contact us at admin@respondog.com.");
+		buf.append("If you have questions or require assistance, please contact us at admin@chemvantage.org.");
 
 		buf.append("<h3>Complete the LTI Advantage Registration Process</h3>");
 		buf.append("The next step is to enter the ResponDog configuration details into your LMS. "
@@ -317,7 +317,7 @@ public class LTIRegistration extends HttpServlet {
 		buf.append("<a href=" + iss + "/registration?UserRequest=final&token=" + token + ">"
 				+ iss + "/registration?UserRequest=final&token=" + token + "</a><br/><br/>");
 
-		buf.append("If you  need additional assistance, please contact me at admin@respondog.com. <p>"
+		buf.append("If you  need additional assistance, please contact me at admin@chemvantage.org. <p>"
 				+ "-Chuck Wight");
 
 		sendEmail(name,email,"ResponDog LTI Registration",buf.toString());
@@ -325,7 +325,7 @@ public class LTIRegistration extends HttpServlet {
 
 	protected static void sendEmail(String recipientName, String recipientEmail, String subject, String messageBody) throws Exception {
 		Message msg = new MimeMessage(Session.getDefaultInstance(new Properties()));
-		InternetAddress from = new InternetAddress("admin@respondog.com", "ResponDog");
+		InternetAddress from = new InternetAddress("admin@chemvantage.org", "ResponDog");
 		msg.setFrom(from);
 		msg.addRecipient(Message.RecipientType.TO,new InternetAddress(recipientEmail,recipientName));
 		msg.addRecipient(Message.RecipientType.CC,from);
@@ -429,7 +429,7 @@ public class LTIRegistration extends HttpServlet {
 					+ "The token provided with this link could not be validated. It may have expired (after 3 days) "
 					+ "or it may not have contained enough information to complete the registration request. You "
 					+ "may <a href=/registration>get a new token</a> by restarting the registration, or contact "
-					+ "Chuck Wight (admin@respondog.com) for assistance.");
+					+ "Chuck Wight (admin@chemvantage.org) for assistance.");
 		}		
 		return buf.toString();
 	}
@@ -463,13 +463,13 @@ public class LTIRegistration extends HttpServlet {
 		Deployment prior = Deployment.getInstance(d.platform_deployment_id);
 		
 		String msg = "<h2>Congratulations. Registration is complete.</h2>"
-				+ "<br/><br/>Contact Chuck Wight at admin@respondog.com for support with any questions or issues.<br/><br/>Thank you.";
+				+ "<br/><br/>Contact Chuck Wight at admin@chemvantage.org for support with any questions or issues.<br/><br/>Thank you.";
 
 
 		if (prior!=null) {  // this is a repeat registration
 			d.status = prior.status==null?"pending":prior.status;
 			if (prior.client_id.equals(d.client_id)) msg += "Note: this platform deployment was registered previously. The registration data have now been updated.<p>";
-			else msg += "<p>Note: This platform deployment was registered previously. The client_id and registration data have now been updated. If this is not correct, you should contact admin@respondog.com immediately.<p>";
+			else msg += "<p>Note: This platform deployment was registered previously. The client_id and registration data have now been updated. If this is not correct, you should contact admin@chemvantage.org immediately.<p>";
 		}
 		
 		ofy().save().entity(d).now();  // registration is now complete
@@ -610,7 +610,7 @@ public class LTIRegistration extends HttpServlet {
 		regJson.addProperty("logo_uri", iss + "/images/respondog.png");
 		regJson.addProperty("token_endpoint_auth_method", "private_key_jwt");
 		JsonArray contactEmails = new JsonArray();
-		contactEmails.add("admin@respondog.com");
+		contactEmails.add("admin@chemvantage.org");
 		regJson.add("contacts", contactEmails);		
 		regJson.addProperty("client_uri", iss);
 		regJson.addProperty("tos_uri", iss + "/about.html#terms");
@@ -736,7 +736,7 @@ public class LTIRegistration extends HttpServlet {
 			try {
 				lms = openIdConfiguration.get("https://purl.imsglobal.org/spec/lti-platform-configuration").getAsJsonObject().get("product_family_code").getAsString();
 			} catch (Exception e) {	
-				sendEmail("ResponDog Administrator","admin@respondog.com","Dynamic Registration Error: LMS Type Unknown",openIdConfiguration.toString());
+				sendEmail("ResponDog Administrator","admin@chemvantage.org","Dynamic Registration Error: LMS Type Unknown",openIdConfiguration.toString());
 			}
 
 			String contact_name = request.getParameter("sub");
@@ -814,7 +814,7 @@ public class LTIRegistration extends HttpServlet {
 					+ "<li>Enable grading and choose the point value, if deasired.</li>"
 					+ "</ol>");	
 		}
-		buf.append(	"If you need assistance, contact us at admin@respondog.com");
+		buf.append(	"If you need assistance, contact us at admin@chemvantage.org");
 		
 		buf.append(Subject.footer);
 		return buf.toString();
@@ -903,7 +903,7 @@ public class LTIRegistration extends HttpServlet {
 					+ "<li>Enable grading, if desired.</li>"
 					+ "</ol>");	
 		}
-		buf.append("If you need additional assistance, please contact us at admin@respondog.com<br/>Thank you.");
+		buf.append("If you need additional assistance, please contact us at admin@chemvantage.org<br/>Thank you.");
 		
 		try {
 			sendEmail(d.contact_name,d.email,"ResponDog Registration",buf.toString());
