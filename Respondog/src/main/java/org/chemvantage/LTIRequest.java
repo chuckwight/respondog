@@ -161,7 +161,7 @@ public class LTIRequest extends HttpServlet {
 					+ "can register your LMS with us at https://respondog.com/registration");
 			if (d.expires != null && d.expires.before(new Date())) d.status = "blocked";
 			if ("blocked".equals(d.status)) throw new Exception("Sorry, we were unable to launch ResponDog from this "
-					+ "account. Please contact admin@chemvantage.org for assistance to reactivate the account. Thank you.");
+					+ "account. Please contact admin@respondog.com for assistance to reactivate the account. Thank you.");
 			if (d.status == null) d.status = "pending";
 
 			// validate the id_token audience:
@@ -334,7 +334,7 @@ public class LTIRequest extends HttpServlet {
 					+ "<h2>A new poll is being created in your course.</h2>"
 					+ "When you launch the poll, you will be given an opportunity to create a set of "
 					+ "questions for your audience or select questions that you created previously "
-					+ "for other polls.<br/>Send questions or comments to admin@chemvantage.org<br/><br/>");
+					+ "for other polls.<br/>Send questions or comments to admin@respondog.com<br/><br/>");
 			buf.append("<form id=selections method=POST action='" + deep_link_return_url + "'>"
 					+ "<input type=hidden name=JWT value='" + jwt + "' />"
 					+ "<input type=submit value='Continue' />"

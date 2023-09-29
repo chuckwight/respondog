@@ -683,9 +683,9 @@ public class LTIMessage {  // utility for sending LTI-compliant "POX" or "REST+J
 
 		try {
 			Message msg = new MimeMessage(session);
-			msg.setFrom(new InternetAddress("admin@chemvantage.org", "ChemVantage"));
+			msg.setFrom(new InternetAddress("admin@respondog.com", "ResponDog"));
 			msg.addRecipient(Message.RecipientType.TO,
-					new InternetAddress("admin@chemvantage.org", "ChemVantage"));
+					new InternetAddress("admin@respondog.com", "ResponDog"));
 			msg.setSubject(subject);
 			msg.setContent(message,"text/html");
 			Transport.send(msg);

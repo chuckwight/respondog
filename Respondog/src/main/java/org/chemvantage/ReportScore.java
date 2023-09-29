@@ -128,14 +128,14 @@ public class ReportScore extends HttpServlet {
 					+ "ChemVantage domain = " + d.platform_deployment_id + "<br>"
 					+ "Domain contact = " + d.email + "<p>"
 					+ "This message was generated automatically to make you aware of a potential problem with the connection to "
-					+ "your LMS. If you need help, please contact Chuck Wight (admin@chemvantage.org) for assistance.<p>"
+					+ "your LMS. If you need help, please contact Chuck Wight (admin@respondog.com) for assistance.<p>"
 					+ "Thank you,<p>"
 					+ "Chuck Wight<br>ChemVantage LLC";
 					
 			Message msg = new MimeMessage(session);
-			msg.setFrom(new InternetAddress("admin@chemvantage.org", "ChemVantage"));
+			msg.setFrom(new InternetAddress("admin@respondog.com", "ChemVantage"));
 			//msg.addRecipient(Message.RecipientType.TO,new InternetAddress(recipient, ""));
-			msg.addRecipient(Message.RecipientType.TO,new InternetAddress("admin@chemvantage.org", "ChemVantage"));
+			msg.addRecipient(Message.RecipientType.TO,new InternetAddress("admin@respondog.com", "ChemVantage"));
 			msg.setSubject("ChemVantage LIS Reporting Error");
 			msg.setContent(msgBody,"text/html");
 			Transport.send(msg);
