@@ -25,13 +25,7 @@ import java.io.PrintWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Date;
-import java.util.Properties;
 
-import javax.mail.Message;
-import javax.mail.Session;
-import javax.mail.Transport;
-import javax.mail.internet.InternetAddress;
-import javax.mail.internet.MimeMessage;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -176,7 +170,7 @@ public class Feedback extends HttpServlet {
 		return buf.toString(); 
 	}
 
-	String submitFeedback(User user,HttpServletRequest request) {
+	String submitFeedback(User user,HttpServletRequest request) throws IOException {
 		StringBuffer buf = new StringBuffer();
 		
 		try { 
@@ -208,7 +202,7 @@ public class Feedback extends HttpServlet {
 			else message += "No star rating provided.<br/>";
 			message += "Email: " + (email==null?"not provided":email) + "<br/>";
 			message += ("Comments:<br/>" + comments);
-			if (email!=null && !email.isEmpty()) sendEmailToAdmin(message);
+			if (email!=null && !email.isEmpty()) Utilities.sendEmail("ResponDog","admin@chemVvantage.org","User Feedback",message);
 		}
 
 		buf.append(Subject.banner);
@@ -259,22 +253,6 @@ public class Feedback extends HttpServlet {
 			reader.close();
 		}
 		return captchaResponse.get("success").getAsBoolean();
-	}
-	
-	private void sendEmailToAdmin(String message) {
-		Properties props = new Properties();
-		Session session = Session.getDefaultInstance(props, null);
-
-		try {
-			Message msg = new MimeMessage(session);
-			msg.setFrom(new InternetAddress("admin@respondog.com", "ResponDog"));
-			msg.addRecipient(Message.RecipientType.TO,
-					new InternetAddress("admin@respondog.com", "ResponDog"));
-			msg.setSubject("ResponDog Feedback Report");
-			msg.setContent(message,"text/html");
-			Transport.send(msg);
-		} catch (Exception e) {
-		}
 	}
 }
 

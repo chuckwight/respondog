@@ -17,6 +17,7 @@
 
 package org.chemvantage;
 
+import static com.googlecode.objectify.ObjectifyService.key;
 import static com.googlecode.objectify.ObjectifyService.ofy;
 
 import java.util.Date;
@@ -50,7 +51,7 @@ public class Score {    // this object represents a best score achieved by a use
 		String hashedId = Subject.hashId(userId);
 		Score s = new Score();
 		s.assignmentId = a.id;
-		s.owner = Key.create(User.class,hashedId);
+		s.owner = key(User.class,hashedId);
 		s.score = 0;
 		s.maxPossibleScore = 0;
 		List<PollTransaction> pollTransactions = ofy().load().type(PollTransaction.class).filter("assignmentId",a.id).filter("userId",hashedId).list();

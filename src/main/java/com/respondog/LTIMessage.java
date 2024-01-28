@@ -21,6 +21,7 @@ import static com.googlecode.objectify.ObjectifyService.ofy;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -37,13 +38,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Properties;
-
-import javax.mail.Message;
-import javax.mail.Session;
-import javax.mail.Transport;
-import javax.mail.internet.InternetAddress;
-import javax.mail.internet.MimeMessage;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
@@ -56,7 +50,7 @@ public class LTIMessage {  // utility for sending LTI-compliant "POX" or "REST+J
 	
 	static Map<String,String> authTokens = new HashMap<String,String>();
 	
-	static String getAccessToken(String platformDeploymentId,String scope) {
+	static String getAccessToken(String platformDeploymentId,String scope) throws IOException {
 		
 		// First, try to retrieve an appropriate authToken from the class variable HashMap authTokens
 		// If the token expires more than 5 minutes from now, use it. Otherwise, request a new one.
@@ -151,7 +145,7 @@ public class LTIMessage {  // utility for sending LTI-compliant "POX" or "REST+J
 			} else throw new Exception("response code " + responseCode);
 		} catch (Exception e) {
 			debug.append("Elapsed time: " + (new Date().getTime() - now.getTime()) + " ms<br/>");
-			sendEmailToAdmin("Failed AuthToken Request",debug.toString() + "<br/>" + (e.getMessage()==null?e.toString():e.getMessage()));
+			Utilities.sendEmail("ResponDog","admin@chemvantage.org","Failed AuthToken Request",debug.toString() + "<br/>" + (e.getMessage()==null?e.toString():e.getMessage()));
 			return "Failed AuthToken Request <br/>" + (e.getMessage()==null?e.toString():e.getMessage()) + "<br/>" + debug.toString();
 		}    
 	}
@@ -673,24 +667,7 @@ public class LTIMessage {  // utility for sending LTI-compliant "POX" or "REST+J
 				} catch (Exception e2) {}
 			}
 		} catch (Exception e) {	
-			}
-			return membership;
 		}
-
-	static void sendEmailToAdmin(String subject,String message) {
-		Properties props = new Properties();
-		Session session = Session.getDefaultInstance(props, null);
-
-		try {
-			Message msg = new MimeMessage(session);
-			msg.setFrom(new InternetAddress("admin@chemvantage.org", "ChemVantage"));
-			msg.addRecipient(Message.RecipientType.TO,
-					new InternetAddress("admin@chemvantage.org", "ChemVantage"));
-			msg.setSubject(subject);
-			msg.setContent(message,"text/html");
-			Transport.send(msg);
-		} catch (Exception e) {
-		}
+		return membership;
 	}
-
 }

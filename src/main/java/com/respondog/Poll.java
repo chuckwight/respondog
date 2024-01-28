@@ -17,7 +17,7 @@
 
 package org.chemvantage;
 
-import static com.google.appengine.api.taskqueue.TaskOptions.Builder.withUrl;
+import static com.googlecode.objectify.ObjectifyService.key;
 import static com.googlecode.objectify.ObjectifyService.ofy;
 
 import java.io.IOException;
@@ -39,7 +39,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.google.appengine.api.taskqueue.QueueFactory;
 import com.googlecode.objectify.Key;
 
 @WebServlet(urlPatterns={"/Poll","/poll"})
@@ -179,7 +178,7 @@ public class Poll extends HttpServlet {
 				if (!user.isInstructor()) break;
 				long qid = createQuestion(user,request);
 				if (qid > 0) {
-					a.questionKeys.add(Key.create(Question.class,qid));
+					a.questionKeys.add(key(Question.class,qid));
 					a.timeAllowed.add(60);
 					ofy().save().entity(a).now();
 				}
@@ -194,7 +193,7 @@ public class Poll extends HttpServlet {
 				break;
 			case "Delete Question":
 				try {
-					Key<Question> k = Key.create(Question.class,Long.parseLong(request.getParameter("QuestionId")));
+					Key<Question> k = key(Question.class,Long.parseLong(request.getParameter("QuestionId")));
 					ofy().delete().key(k).now();
 					if (a.questionKeys.remove(k)) ofy().save().entity(a).now();
 				} catch (Exception e) {}
@@ -432,7 +431,7 @@ public class Poll extends HttpServlet {
 		try {
 			if (user.isAnonymous()) throw new Exception();  // don't save Scores for anonymous users
 			if (a.lti_ags_lineitem_url != null) {
-				QueueFactory.getDefaultQueue().add(withUrl("/ReportScore").param("AssignmentId",String.valueOf(a.id)).param("UserId",URLEncoder.encode(user.getId(),"UTF-8")));  // put report into the Task Queue
+				Utilities.createTask("/ReportScore","AssignmentId=" + a.id + "&UserId=" + URLEncoder.encode(user.getId(),"UTF-8"));
 			}
 		} catch (Exception e) {}
 		return pt;
@@ -672,7 +671,7 @@ public class Poll extends HttpServlet {
 		//String correctResponse = q.getCorrectAnswer();
 		String otherResponses = null;
 		char choice = 'a';
-		Key<Question> k = Key.create(q);
+		Key<Question> k = key(q);
 		
 		switch (q.getQuestionType()) {
 		case Question.MULTIPLE_CHOICE:
@@ -850,7 +849,7 @@ public class Poll extends HttpServlet {
 				if (starterQuestions.size()>0) {
 					ofy().save().entities(starterQuestions).now();
 					for (Question q : starterQuestions) {
-						a.questionKeys.add(Key.create(q));
+						a.questionKeys.add(key(q));
 						a.timeAllowed.add(60);
 					}
 					ofy().save().entity(a).now();
@@ -935,7 +934,7 @@ public class Poll extends HttpServlet {
 		int i=0;
 		buf.append("<div style='display:table'>");
 		for (Question q : authoredQuestions) {
-			if (a.questionKeys.contains(Key.create(q))) continue; // don't allow duplicate questions in a Poll
+			if (a.questionKeys.contains(key(q))) continue; // don't allow duplicate questions in a Poll
 			i++;
 			q.setParameters(a.id % Integer.MAX_VALUE);
 			buf.append("<div style='display: table-row'>");
@@ -957,7 +956,7 @@ public class Poll extends HttpServlet {
 		List<Integer> timeAllowed = new ArrayList<Integer>();
 		for (String qid : qids) {
 			try {
-				questionKeys.add(Key.create(Question.class,Long.parseLong(qid)));
+				questionKeys.add(key(Question.class,Long.parseLong(qid)));
 				timeAllowed.add(60);
 			} catch (Exception e) {}
 		}
@@ -977,7 +976,7 @@ public class Poll extends HttpServlet {
 	private static void removeQuestion(User user,Assignment a,HttpServletRequest request) {
 		try {
 			Long questionId = Long.parseLong(request.getParameter("QuestionId"));
-			Key<Question> k = Key.create(Question.class,questionId);
+			Key<Question> k = key(Question.class,questionId);
 			if (a.questionKeys.remove(k)) ofy().save().entity(a).now();
 		} catch (Exception e) {}
 	}
@@ -1332,7 +1331,7 @@ public class Poll extends HttpServlet {
 			Deployment d = ofy().load().type(Deployment.class).id(a.domain).safe();
 			String platform_id = d.getPlatformId() + "/";
 			for (String id : membership.keySet()) {
-				keys.put(id,Key.create(Key.create(User.class,Subject.hashId(platform_id+id)),Score.class,a.id));
+				keys.put(id,key(key(User.class,Subject.hashId(platform_id+id)),Score.class,a.id));
 			}
 			Map<Key<Score>,Score> cvScores = ofy().load().keys(keys.values());
 			
@@ -1403,7 +1402,7 @@ public class Poll extends HttpServlet {
 		if (!user.isInstructor()) return;
 		try {
 			Long questionId = Long.parseLong(request.getParameter("QuestionId"));
-			Key<Question> k = Key.create(Question.class,questionId);
+			Key<Question> k = key(Question.class,questionId);
 			int i = a.questionKeys.indexOf(k);
 			if(i>0) {
 				Collections.swap(a.questionKeys, i, i-1);
@@ -1419,7 +1418,7 @@ public class Poll extends HttpServlet {
 		if (!user.isInstructor()) return;
 		try {
 			Long questionId = Long.parseLong(request.getParameter("QuestionId"));
-			Key<Question> k = Key.create(Question.class,questionId);
+			Key<Question> k = key(Question.class,questionId);
 			int i = a.questionKeys.indexOf(k);
 			if(i<a.questionKeys.size()-1) {
 				Collections.swap(a.questionKeys, i, i+1);
@@ -1439,7 +1438,7 @@ public class Poll extends HttpServlet {
 			if (time.length==2) seconds = 60*Integer.parseInt(time[0]);
 			seconds += Integer.parseInt(time[time.length-1]);
 			Long questionId = Long.parseLong(request.getParameter("QuestionId"));
-			Key<Question> k = Key.create(Question.class,questionId);
+			Key<Question> k = key(Question.class,questionId);
 			int i = a.questionKeys.indexOf(k);
 			a.timeAllowed.set(i,seconds);
 			ofy().save().entity(a).now();

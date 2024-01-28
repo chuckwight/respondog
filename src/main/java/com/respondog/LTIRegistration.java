@@ -34,14 +34,8 @@ import java.net.URLEncoder;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.Iterator;
-import java.util.Properties;
 import java.util.regex.Pattern;
 
-import javax.mail.Message;
-import javax.mail.Session;
-import javax.mail.Transport;
-import javax.mail.internet.InternetAddress;
-import javax.mail.internet.MimeMessage;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -177,7 +171,7 @@ public class LTIRegistration extends HttpServlet {
 						+ "URL: " + request.getParameter("url") + "<br/>"
 						+ "LMS: " + request.getParameter("lms") + "<br/>"
 						+ debug.toString();
-				if (dynamicRegistration) sendEmail("ResponDog Administrator","admin@respondog.com","Dynamic Registration Error",message);
+				if (dynamicRegistration) Utilities.sendEmail("ResponDog Administrator","admin@respondog.com","Dynamic Registration Error",message);
 			} catch (Exception e1) {
 				e1.printStackTrace();
 			}
@@ -320,20 +314,9 @@ public class LTIRegistration extends HttpServlet {
 		buf.append("If you  need additional assistance, please contact me at admin@respondog.com. <p>"
 				+ "-Chuck Wight");
 
-		sendEmail(name,email,"ResponDog LTI Registration",buf.toString());
+		Utilities.sendEmail(name,email,"ResponDog LTI Registration",buf.toString());
 	}
 
-	protected static void sendEmail(String recipientName, String recipientEmail, String subject, String messageBody) throws Exception {
-		Message msg = new MimeMessage(Session.getDefaultInstance(new Properties()));
-		InternetAddress from = new InternetAddress("admin@respondog.com", "ResponDog");
-		msg.setFrom(from);
-		msg.addRecipient(Message.RecipientType.TO,new InternetAddress(recipientEmail,recipientName));
-		msg.addRecipient(Message.RecipientType.CC,from);
-		msg.setSubject(subject);
-		msg.setContent(messageBody,"text/html");
-		Transport.send(msg);
-	}
-		
 	String clientIdForm(String token) {
 		StringBuffer buf = new StringBuffer(Subject.banner);
 		String iss = null;
@@ -736,7 +719,7 @@ public class LTIRegistration extends HttpServlet {
 			try {
 				lms = openIdConfiguration.get("https://purl.imsglobal.org/spec/lti-platform-configuration").getAsJsonObject().get("product_family_code").getAsString();
 			} catch (Exception e) {	
-				sendEmail("ResponDog Administrator","admin@respondog.com","Dynamic Registration Error: LMS Type Unknown",openIdConfiguration.toString());
+				Utilities.sendEmail("ResponDog Administrator","admin@respondog.com","Dynamic Registration Error: LMS Type Unknown",openIdConfiguration.toString());
 			}
 
 			String contact_name = request.getParameter("sub");
@@ -906,7 +889,7 @@ public class LTIRegistration extends HttpServlet {
 		buf.append("If you need additional assistance, please contact us at admin@respondog.com<br/>Thank you.");
 		
 		try {
-			sendEmail(d.contact_name,d.email,"ResponDog Registration",buf.toString());
+			Utilities.sendEmail(d.contact_name,d.email,"ResponDog Registration",buf.toString());
 		} catch (Exception e) {
 		}
 	}

@@ -1,5 +1,6 @@
 package org.chemvantage;
 
+import static com.googlecode.objectify.ObjectifyService.key;
 import static com.googlecode.objectify.ObjectifyService.ofy;
 
 import java.io.IOException;
@@ -124,8 +125,8 @@ public class Token extends HttpServlet {
 			}
 
 			// DeploymentId was not sent; prepare to search for all deployments from this platform:
-			Key<Deployment> kstart = Key.create(Deployment.class, platform_id);
-			Key<Deployment> kend = Key.create(Deployment.class, platform_id + "~");			
+			Key<Deployment> kstart = key(Deployment.class, platform_id);
+			Key<Deployment> kend = key(Deployment.class, platform_id + "~");			
 			String client_id = request.getParameter("client_id");
 			
 			List<Deployment> deployments = null;
