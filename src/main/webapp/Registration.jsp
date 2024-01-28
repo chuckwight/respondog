@@ -1,6 +1,6 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ page import="static com.googlecode.objectify.ObjectifyService.ofy" %>
-<%@ page import="java.util.*,com.googlecode.objectify.*,org.chemvantage.*,com.google.common.net.InternetDomainName"%>
+<%@ page import="java.util.*,com.googlecode.objectify.*,com.respondog.*,com.google.common.net.InternetDomainName"%>
 
 <%
 	int price = 2;  // posted monthky subscription price in USD
@@ -48,12 +48,12 @@
 <form id=regform method=post action='/registration'>
 
 Please complete the form below to create a trusted LTI Advantage connection between your LMS and ResponDog 
-that is convenient, secure and <a href=https://site.imsglobal.org/certifications?query=chemvantage>certified by 1EdTech</a>.
+that is convenient, secure and <a href=https://site.imsglobal.org/certifications/chemvantage/respondog>certified by 1EdTech</a>.
 When you submit the form, ResponDog will send 
 <%= dynamic?"a registration request to your LMS. If successful, you must activate the deployment in your LMS.":"a confirmation email with a tokenized link to complete the registration." %>
 <br/><br/>
 
-Please tell us how to contact you if there is ever a problem with your account (see our <a href=https://www.chemvantage.org/about.html#privacy>Privacy Policy</a>):<br/>
+Please tell us how to contact you if there is ever a problem with your account (see our <a href=https://respondog.com/about.html#privacy>Privacy Policy</a>):<br/>
 <label>Your Name: <input type=text name=sub size=40 value='<%= (sub==null?"":sub) %>' /> </label><br/>
 <label>Your Email: <input type=text name=email size=40 value='<%= (email==null?"":email) %>' /> </label><br/><br/>
 

@@ -1,4 +1,4 @@
-package org.chemvantage;
+package com.respondog;
 
 import static com.googlecode.objectify.ObjectifyService.key;
 import static com.googlecode.objectify.ObjectifyService.ofy;

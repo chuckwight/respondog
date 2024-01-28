@@ -15,7 +15,7 @@
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package org.chemvantage;
+package com.respondog;
 
 import static com.googlecode.objectify.ObjectifyService.key;
 import static com.googlecode.objectify.ObjectifyService.ofy;

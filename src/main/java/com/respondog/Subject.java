@@ -15,7 +15,7 @@
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package org.chemvantage;
+package com.respondog;
 
 import static com.googlecode.objectify.ObjectifyService.ofy;
 
@@ -52,12 +52,13 @@ public class Subject {
 		} catch (NotFoundException e) {  // runs only once at inception of datastore
 			s = new Subject();
 			s.id = 1L;
+			s.announcement = "Hello World!";
 			s.title = "ResponDog";
 			s.HMAC256Secret = "ChangeMeInTheDataStoreManuallyForYourProtection";
 			s.reCaptchaSecret = "changeMe";
 			s.reCaptchaSiteKey = "changeMe";
 			s.salt = "ResponDogIsTheSaltOfTheEarth";
-			ofy().save().entity(s);
+			ofy().save().entity(s).now();
 		} catch (Exception e) {  // ofy() not ready
 			try {
 				Thread.sleep(1000);

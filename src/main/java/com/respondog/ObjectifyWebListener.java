@@ -1,4 +1,4 @@
-package org.chemvantage;
+package com.respondog;
 
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
@@ -20,6 +20,7 @@ public class ObjectifyWebListener implements ServletContextListener {
 	  ObjectifyService.init(new ObjectifyFactory(datastore));
  
 	  // This is a good place to register your POJO entity classes.
+    /*
     ObjectifyService.register(Assignment.class);
     ObjectifyService.register(Deployment.class);
     ObjectifyService.register(Nonce.class);
@@ -27,6 +28,7 @@ public class ObjectifyWebListener implements ServletContextListener {
     ObjectifyService.register(Question.class);
     ObjectifyService.register(RSAKeyPair.class);
     ObjectifyService.register(Score.class);
+   */
     ObjectifyService.register(Subject.class);
     ObjectifyService.register(User.class);
  }

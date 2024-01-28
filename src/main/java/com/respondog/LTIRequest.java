@@ -1,4 +1,4 @@
-package org.chemvantage;
+package com.respondog;
 
 import static com.googlecode.objectify.ObjectifyService.ofy;
 
@@ -30,7 +30,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-@WebServlet(urlPatterns = {"/",""})
+@WebServlet(urlPatterns = {"/index.html"},loadOnStartup=1)
 public class LTIRequest extends HttpServlet {
 
 	private static final long serialVersionUID = 137L;

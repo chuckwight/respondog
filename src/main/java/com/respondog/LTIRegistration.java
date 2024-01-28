@@ -18,7 +18,7 @@
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package org.chemvantage;
+package com.respondog;
 
 import static com.googlecode.objectify.ObjectifyService.ofy;
 
@@ -236,6 +236,7 @@ public class LTIRegistration extends HttpServlet {
 	}
 		
 	boolean reCaptchaOK(HttpServletRequest request) throws Exception {
+		if (request.getServerName().equals("localhost")) return true;
 		String queryString = "secret=" + Subject.getReCaptchaSecret() + "&response=" 
 				+ request.getParameter("g-recaptcha-response") + "&remoteip=" + request.getRemoteAddr();
 		URL u = new URL("https://www.google.com/recaptcha/api/siteverify");
