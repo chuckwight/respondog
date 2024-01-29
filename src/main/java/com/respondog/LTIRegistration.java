@@ -236,7 +236,6 @@ public class LTIRegistration extends HttpServlet {
 	}
 		
 	boolean reCaptchaOK(HttpServletRequest request) throws Exception {
-		if (request.getServerName().equals("localhost")) return true;
 		String queryString = "secret=" + Subject.getReCaptchaSecret() + "&response=" 
 				+ request.getParameter("g-recaptcha-response") + "&remoteip=" + request.getRemoteAddr();
 		URL u = new URL("https://www.google.com/recaptcha/api/siteverify");
@@ -574,7 +573,7 @@ public class LTIRegistration extends HttpServlet {
 		responseTypes.add("id_token");
 		regJson.add("response_types", responseTypes);
 		String iss = null;
-		String project_id = System.getProperty("com.google.appengine.application.id");
+		String project_id = Subject.projectId;
 		String domain = null;
 		switch (project_id) {
 		case "respondog":
@@ -806,7 +805,7 @@ public class LTIRegistration extends HttpServlet {
 	
 	static void sendApprovalEmail(Deployment d, HttpServletRequest request) {
 		StringBuffer buf = new StringBuffer();
-		String project_id = System.getProperty("com.google.appengine.application.id");
+		String project_id = Subject.projectId;
 		String iss = null;
 		switch (project_id) {
 		case "respondog":

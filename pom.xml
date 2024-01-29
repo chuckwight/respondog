@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.respondog</groupId>
   <artifactId>respondog</artifactId>
-  <version>20240104t1650</version>
+  <version>20240129t1438</version>
   <name>ResponDog</name>
   <description>ResponDog is an LTI app for creating audience response polls.</description>
    <properties>
@@ -32,12 +32,12 @@
   <dependencies>
 
     <!-- Embedded Jetty Server -->
-   <dependency>
+    <dependency>
       <groupId>org.eclipse.jetty</groupId>
       <artifactId>apache-jsp</artifactId>
       <version>${jetty.version}</version>
     </dependency>
-
+	
     <!-- Objectify 6.1.0 -->
     <dependency>
       <groupId>com.googlecode.objectify</groupId>
