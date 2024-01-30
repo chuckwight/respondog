@@ -249,7 +249,7 @@ public class LTIRequest extends HttpServlet {
 			ofy().save().entity(a).now();
 			
 			String launchUrl = iss;
-			String iconUrl = iss.lastIndexOf("/")==iss.length()?iss+"images/respondog.png":iss+"/images/respondog.com";
+			String iconUrl = iss + (iss.lastIndexOf("/")==iss.length()?"":"/") + "images/respondog.png";
 			String client_id = d.client_id;
 			String subject = claims.get("sub").getAsString();
 			String nonce = Nonce.generateNonce();
