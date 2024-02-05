@@ -13,10 +13,10 @@ import java.util.Base64.Encoder;
 import java.util.Date;
 import java.util.Iterator;
 
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import com.auth0.jwk.Jwk;
 import com.auth0.jwk.JwkProvider;
@@ -30,7 +30,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-@WebServlet(urlPatterns = {"/index.html"}, loadOnStartup=1)
+@WebServlet("/home")
 public class LTIRequest extends HttpServlet {
 
 	private static final long serialVersionUID = 137L;
@@ -83,18 +83,7 @@ public class LTIRequest extends HttpServlet {
 			validateTokenSignature(id_token,d.well_known_jwks_url);
 			
 			User user = validateUserClaims(claims);
-			boolean isPremiumUser = user.isPremium();
-			if (!isPremiumUser) {
-				if (d.getNLicensesRemaining()>0) {
-					d.nLicensesRemaining--;
-					//new PremiumUser(user.getHashedId(),12,0,d.organization);
-					isPremiumUser = true;
-				} else if (d.price == 0) {
-					//new PremiumUser(user.getHashedId(),12,0,d.organization);
-					isPremiumUser = true;
-				} else response.sendRedirect("/checkout0.jsp");
-			}
-
+			
 			// request is for ResourceLink or DeepLinking?
 			JsonElement message_type = claims.get("https://purl.imsglobal.org/spec/lti/claim/message_type");
 			if (message_type == null) throw new Exception("Missing LTI message_type.");
@@ -115,6 +104,7 @@ public class LTIRequest extends HttpServlet {
 			default: throw new Exception("The LTI message_type claim " + message_type.getAsString() + " is not supported.");
 			}						
 		} catch (Exception e) {
+			out.println("ResponDog Launch Failed: " + e.getMessage()==null?e.toString():e.getMessage());
 			response.sendError(401, "ResponDog Launch Failed: " + e.getMessage()==null?e.toString():e.getMessage());
 		}
 
@@ -339,8 +329,6 @@ public class LTIRequest extends HttpServlet {
 					+ "<input type=hidden name=JWT value='" + jwt + "' />"
 					+ "<input type=submit value='Continue' />"
 					+ "</form><br/><br/>");
-			//buf.append("<script>document.getElementById('selections').submit();</script>");
-			//buf.append("The new content items are: " + content_items.toString());
 		} catch (Exception e) {
 			buf.append(e.getMessage()==null?e.toString():e.getMessage() + "Debug: " + debug.toString());
 		}
@@ -455,31 +443,31 @@ public class LTIRequest extends HttpServlet {
 	static String welcomePage() {
 		StringBuffer buf = new StringBuffer();
 		buf.append(" <h2>Welcome to ResponDog!</h2>\n"
-				+ "	Whether you are teaching a college class or presenting a training seminar to a group of "
-				+ "	business professionals, you need your audience to be focused and attentive. <br/><br/>\n"
-				+ "	Active audience polling helps, and ResponDog makes it easy.<br/><br/>\n"
-				+ "	ResponDog is an <a href=https://www.imsglobal.org/lti-fundamentals-faq>LTI app</a> that works with your learning management system to create "
-				+ "	audience response polls for posing quiz questions or gauging participants' opinions. "
-				+ "	Polls are useful for showing participants how their answers compare to their peers. "
-				+ "	They're also handy for taking attendance and discouraging tardiness. Scores on ResponDog "
-				+ "	polls are returned to your LMS grade book automatically, saving you work.<br/><br/>\n"
-				+ "	ResponDog features seven different types of questions for you to use:<br/>"
-				+ "	<img height=90 width=90 src=/images/multiple_choice.png alt='multiple_choice'> "
-				+ "	<img height=90 width=90 src=/images/checkbox.png alt='checkbox'> "
-				+ "	<img height=90 width=90 src=/images/true_false.png alt='true_false'> "
-				+ "	<img height=90 width=90 src=/images/numeric.png alt='numeric'> "
-				+ "	<img height=90 width=90 src=/images/five_stars.png alt='five_stars'> "
-				+ "	<img height=90 width=90 src=/images/fill_in_blank.png alt='fill_in_blank'> "
-				+ "	<img height=90 width=90 src=/images/short_essay.png alt='short_essay'>"
-				+ "	<br/><br/>\n"
-				+ "	ResponDog is completely free for educational use at nonprofit schools and universities.<br/>"
-				+ "	Commercial and personal presenter accounts are just $19/month after a 30-day free trial period.<br/>"
-				+ "	Poll participants are always free.<br/><br/>\n"
-				+ "	<a href=/Registration.jsp>Register your LMS free</a> today, and get the paw-some feedback you need with ResponDog!<br/><br/>\n"
-				+ "	<form method=post action='/' >If you have a guest code, please enter it here: "
-				+ "	<input type=text name=code /><input type=submit />"
-				+ "	</form><br/><br/>\n"
-				+ "	</div>");
+				+ "Whether you are teaching a college class or presenting a training seminar to a group of "
+				+ "business professionals, you need your audience to be focused and attentive. <br/><br/>\n"
+				+ "Active audience polling helps, and ResponDog makes it easy.<br/><br/>\n"
+				+ "ResponDog is an <a href=https://www.imsglobal.org/lti-fundamentals-faq>LTI app</a> that works with your learning management system to create "
+				+ "audience response polls for posing quiz questions or gauging participants' opinions. "
+				+ "Polls are useful for showing participants how their answers compare to their peers. "
+				+ "They're also handy for taking attendance and discouraging tardiness. Scores on ResponDog "
+				+ "polls are returned to your LMS grade book automatically, saving you work.<br/><br/>\n"
+				+ "ResponDog features seven different types of questions for you to use:<br/>"
+				+ "<img height=90 width=90 src=/images/multiple_choice.png alt='multiple_choice'> "
+				+ "<img height=90 width=90 src=/images/checkbox.png alt='checkbox'> "
+				+ "<img height=90 width=90 src=/images/true_false.png alt='true_false'> "
+				+ "<img height=90 width=90 src=/images/numeric.png alt='numeric'> "
+				+ "<img height=90 width=90 src=/images/five_stars.png alt='five_stars'> "
+				+ "<img height=90 width=90 src=/images/fill_in_blank.png alt='fill_in_blank'> "
+				+ "<img height=90 width=90 src=/images/short_essay.png alt='short_essay'>"
+				+ "<br/><br/>\n"
+				+ "ResponDog is completely free for educational use at nonprofit schools and universities.<br/>"
+				+ "Commercial and personal presenter accounts are just $19/month after a 30-day free trial period.<br/>"
+				+ "Poll participants are always free.<br/><br/>\n"
+				+ "<a href=/registration>Register your LMS free</a> today, and get the paw-some feedback you need with ResponDog!<br/><br/>\n"
+				+ "<form method=post action='/' >If you have a guest code, please enter it here: "
+				+ "<input type=text name=code /><input type=submit />"
+				+ "</form><br/><br/>\n"
+				+ "</div>");
 		return buf.toString();
 	}
 }

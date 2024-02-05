@@ -30,18 +30,9 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLEncoder;
 import java.util.Date;
-import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.regex.Pattern;
-
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
@@ -50,6 +41,13 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+
+import jakarta.servlet.ServletConfig;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 @WebServlet(urlPatterns = {"/registration","/registration/"})
 public class LTIRegistration extends HttpServlet {
@@ -62,8 +60,7 @@ public class LTIRegistration extends HttpServlet {
 	 *   1) All users complete a basic form giving information about their org and the LTI request. If the
 	 *      launch uses Dynamic Registration, this information is used to eliminate some of the fields. If
 	 *      present, the OpenID Configuration URL and Registration Token are included in the POST to ResponDog.
-	 *   2) ResponDog validates the registration parameters, and if necessary, redirects to Registration.jsp
-	 *      to correct any errors.
+	 *   2) ResponDog validates the registration parameters, and if necessary, displays the form again.
 	 *   3) The registration email contains an activation token and, if necessary, the ResponDog endpoints 
 	 *      and configuration JSON to complete the registration in the LMS. 
 	 *   4) The user then clicks the tokenized link, which contains the platformDeploymentId. If necessary, a form
@@ -77,14 +74,14 @@ public class LTIRegistration extends HttpServlet {
 	 * */
 	
 	private static final long serialVersionUID = 137L;
-	Algorithm algorithm = Algorithm.HMAC256(Subject.getHMAC256Secret());
+	Algorithm algorithm = null;
 	static String price = "2";
 	
 	@Override
 	public void init(ServletConfig config) throws ServletException {
 		super.init(config);
 	}
-
+	
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) 
 	throws ServletException, IOException {
@@ -98,21 +95,20 @@ public class LTIRegistration extends HttpServlet {
 			if (request.getParameter("token")!=null) {
 				response.setContentType("text/html");
 				String token = request.getParameter("token");
+				if (algorithm == null) 	algorithm = Algorithm.HMAC256(Subject.getHMAC256Secret());
 				JWT.require(algorithm).withIssuer(iss).build().verify(token);
 				out.println(Subject.header("LTI Registration") + clientIdForm(token) + Subject.footer);
 			} else if ("config".contentEquals(userRequest)) {
 				response.setContentType("application/json");
 				out.println(getConfigurationJson(iss,request.getParameter("lms")));
 			} else {
-				String queryString = request.getQueryString();
-				String registrationURL = "/Registration.jsp" + (queryString==null?"":"?" + queryString);
-				response.sendRedirect(registrationURL);
+				out.println(Subject.header() + registrationForm(request,null) + Subject.footer);
 			}
 		} catch (Exception e) {
-			response.sendError(401, e.getMessage());
+			response.sendError(401, e.getMessage()==null?e.toString():e.getMessage());
 		}
 	}
-	
+
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) 
 	throws ServletException, IOException {
@@ -129,6 +125,7 @@ public class LTIRegistration extends HttpServlet {
 		try {
 			if ("finalize".contentEquals(userRequest)) {				
 				String token = request.getParameter("Token");
+				if (algorithm == null) 	algorithm = Algorithm.HMAC256(Subject.getHMAC256Secret());
 				JWT.require(algorithm).withIssuer(iss).build().verify(token);
 				out.println(Subject.header("ResponDog LTI Registration") + Subject.banner + createDeployment(request) + Subject.footer);			
 			} else {
@@ -155,15 +152,8 @@ public class LTIRegistration extends HttpServlet {
 				}
 			}
 		} catch (Exception e) {
-			String message = (e.getMessage()==null?e.toString():e.getMessage() + debug.toString());
-			String registrationURL = "/Registration.jsp?message=" + URLEncoder.encode(message,"utf-8");
-			Enumeration<String> enumeration = request.getParameterNames();
-			while(enumeration.hasMoreElements()){
-	            String parameterName = enumeration.nextElement();
-	            String parameterValue = request.getParameter(parameterName);
-	            registrationURL += "&" + parameterName + "=" + URLEncoder.encode(parameterValue,"utf-8");
-	        }
-			try {
+			String message = (e.getMessage()==null?e.toString():e.getMessage());
+			if (dynamicRegistration) {
 				message += "<br/>"
 						+ "Name: " + request.getParameter("sub") + "<br/>"
 						+ "Email: " + request.getParameter("email") + "<br/>"
@@ -171,14 +161,88 @@ public class LTIRegistration extends HttpServlet {
 						+ "URL: " + request.getParameter("url") + "<br/>"
 						+ "LMS: " + request.getParameter("lms") + "<br/>"
 						+ debug.toString();
-				if (dynamicRegistration) Utilities.sendEmail("ResponDog Administrator","admin@respondog.com","Dynamic Registration Error",message);
-			} catch (Exception e1) {
-				e1.printStackTrace();
+				Utilities.sendEmail("ResponDog Administrator","admin@respondog.com","Dynamic Registration Error",message);
+			} else {
+				out.println(Subject.header() + registrationForm(request,message) + Subject.footer);
 			}
-			response.sendRedirect(registrationURL);
 		}
 	}
 		
+	String registrationForm(HttpServletRequest request, String message) {
+		String sub = request.getParameter("sub");
+		String email = request.getParameter("email");
+		String aud = request.getParameter("aud");
+		String url = request.getParameter("url");
+		String lms = request.getParameter("lms");
+		String lms_other = request.getParameter("lms_other");
+		String AcceptResponDogTOS = request.getParameter("AcceptResponDogTOS");
+		String openid_configuration = request.getParameter("openid_configuration");
+		String registration_token = request.getParameter("registration_token");
+		boolean dynamic = openid_configuration != null;
+		
+		StringBuffer buf = new StringBuffer(Subject.banner);
+		
+		if (message != null) {
+			buf.append("<span style='color: #EE0000; border: 2px solid red'>&nbsp;" + message + " &nbsp;</span>");
+		}
+		
+		buf.append("<main>"
+				+ "<h2>LTI Advantage " + (dynamic?"Dynamic ":"") + "Registration</h2>");
+		
+		buf.append("<form id=regform method=post action=/registration>"
+				+ "Please complete the form below to create a trusted LTI Advantage connection between your LMS and ResponDog "
+				+ "that is convenient, secure and <a href=https://site.imsglobal.org/certifications/chemvantage/respondog>certified by 1EdTech</a>. "
+				+ "When you submit the form, ResponDog will send "
+				+ (dynamic?"a back-end registration request to your LMS. If successful, you must activate the deployment in your LMS.":"a confirmation email with a tokenized link to complete the registration. ")
+				+ "<br/><br/>\n");
+		
+		buf.append("Please tell us how to contact you if there is ever a problem with your account (see our <a href=https://respondog.com/about.html#privacy>Privacy Policy</a>):<br/>"
+				+ "<label>Your Name: <input type=text required name=sub size=40 value='" + (sub==null?"":sub) + "' /> </label><br/>"
+				+ "<label>Your Email: <input type=text required name=email size=40 value='" + (email==null?"":email) + "' /> </label><br/><br/>\n");
+		
+		buf.append("Please tell us about your school, business or organization:<br/>"
+				+ "<label>Org Name: <input type=text required name=aud  value='" + (aud==null?"":aud) + "' /> </label><br/>\n"
+				+ "<label>Home Page: <input type=text required name=url placeholder='https://myschool.edu' value='" + (url==null?"":url) + "' /></label><br/><br/>\n");
+		
+		if (registration_token!=null) {
+			buf.append("<input type=hidden name=registration_token value='" + registration_token + "' />");
+		}
+		
+		if (dynamic) {
+			buf.append("<input type=hidden name=openid_configuration value='" + openid_configuration + "' />");
+		} else {
+			buf.append("<fieldset style='width:400px'><legend>Type of Learning Management System:<br/></legend>\n"
+					+ "<label><input type=radio name=lms value=blackboard " + ((lms!=null && lms.equals("blackboard"))?"checked":"") + "  />Blackboard</label><br/>\n"
+					+ "<label><input type=radio name=lms value=brightspace " + ((lms!=null && lms.equals("brightspace"))?"checked":"") + "  />Brightspace</label><br/>\n"
+					+ "<label><input type=radio name=lms value=canvas " + ((lms!=null && lms.equals("canvas"))?"checked":"") + "  />Canvas</label><br/>\n"
+					+ "<label><input type=radio name=lms value=moodle " + ((lms!=null && lms.equals("moodle"))?"checked":"") + "  />Moodle</label><br/>\n"
+					+ "<label><input type=radio name=lms value=sakai " + ((lms!=null && lms.equals("sakai"))?"checked":"") + "  />Sakai</label><br/>\n"
+					+ "<label><input type=radio name=lms value=schoology " + ((lms!=null && lms.equals("schoology"))?"checked":"") + "  />Schoology</label><br/>\n"
+					+ "<label><input type=radio name=lms id=other value=other " + ((lms!=null && lms.equals("other"))?"checked":"") + "  />Other:</label>\n"
+					+ "<label><input type=text name=lms_other value='" + (lms_other==null?"":lms_other) + "' placeholder='(specify)' onFocus=document.getElementById('other').checked=true; /></label>\n"
+					+ "</fieldset>\n"
+					+ "<br/><br/>");
+		}
+		
+		buf.append("Pricing:"
+				+ "  <ul>"
+				+ "	<li>ResponDog is completely free for educational use at nonprofit schools and universities.</li>"
+				+ "	<li>Commercial and personal presenter accounts are just $19/month after a 30-day free trial period.</li>"
+				+ "	<li>Poll participants are always free.</li>"
+				+ "  </ul>\n");
+		
+		buf.append("<label><input type=checkbox name=AcceptResponDogTOS value=true " + ((AcceptResponDogTOS!=null && AcceptResponDogTOS.equals("true"))?"checked":"")+ " />Accept the <a href=/about.html#terms target=_blank aria-label='opens new tab'>ResponDog Terms of Service</a></label><br/><br/>\n");
+		
+		buf.append("<div class='g-recaptcha' data-sitekey='" + Subject.getReCaptchaSiteKey() + "' aria-label='Google Recaptcha'></div><br/><br/>"
+				+ "<script type='text/javascript' src='https://www.google.com/recaptcha/api.js'> </script>\n");
+		
+		buf.append("<input type=submit value='Submit Registration'/>"
+				+ "</form><br/><br/>"
+				+ "</main>");
+		
+		return buf.toString();
+	}
+	
 	String validateApplicationFormContents(HttpServletRequest request) throws Exception {
 		try {
 		String sub = request.getParameter("sub");
@@ -189,7 +253,7 @@ public class LTIRegistration extends HttpServlet {
 		String lms_other = request.getParameter("lms_other");
 		String openid_configuration = request.getParameter("openid_configuration");
 		
-		if (sub.isEmpty() || email.isEmpty()) throw new Exception("All form fields are required. ");
+		if (sub==null || sub.isEmpty() || email.isEmpty()) throw new Exception("All form fields are required. ");
 		String regex = "^[A-Za-z0-9+_.-]+@(.+)$";		 
 		Pattern pattern = Pattern.compile(regex);
 		if (!pattern.matcher(email).matches()) throw new Exception("Your email address was not formatted correctly. ");
@@ -214,6 +278,7 @@ public class LTIRegistration extends HttpServlet {
 		if (!reCaptchaOK(request)) throw new Exception("ReCaptcha tool was unverified. Please try again. ");
 		
 		String iss = request.getServerName().contains("dev-respondog")?"https://dev-respondog.appspot.com":"https://respondog.com";
+		if (algorithm == null) 	algorithm = Algorithm.HMAC256(Subject.getHMAC256Secret());
 		
 		// Construct a new registration token
 		Date now = new Date();
@@ -573,9 +638,8 @@ public class LTIRegistration extends HttpServlet {
 		responseTypes.add("id_token");
 		regJson.add("response_types", responseTypes);
 		String iss = null;
-		String project_id = Subject.projectId;
 		String domain = null;
-		switch (project_id) {
+		switch (Subject.projectId) {
 		case "respondog":
 			iss = "https://respondog.com";
 			domain = "respondog.com";
@@ -805,15 +869,7 @@ public class LTIRegistration extends HttpServlet {
 	
 	static void sendApprovalEmail(Deployment d, HttpServletRequest request) {
 		StringBuffer buf = new StringBuffer();
-		String project_id = Subject.projectId;
-		String iss = null;
-		switch (project_id) {
-		case "respondog":
-			iss = "https://respondog.com";
-			break;
-		case "dev-respondog":
-			iss = "https://dev-respondog.appspot.com";
-		}
+		String iss = "https://" + request.getServerName();
 		
 		buf.append("<h2>ResponDog Registration Success</h2>"
 				+ "Congratulations! Your LTI registration has been completed:<br/>"
@@ -828,9 +884,7 @@ public class LTIRegistration extends HttpServlet {
 		} else {
 			buf.append("<h3>Getting Started</h3>"
 					+ "Your ResponDog account is now active, and you may create new placement exams and assignments, or just expolore the "
-					+ "site without limitations. "
-					+ "Students must purchase a ResponDog subscription for $" + price + ".00 USD per month to access the assignments. "
-					+ "As a reminder, access to ResponDog by instructors and LMS account administrators is always free.");
+					+ "site without limitations. ");
 		}
 		
 		buf.append("<h3>Helpful Hints</h3>"
