@@ -102,7 +102,7 @@ public class LTIRegistration extends HttpServlet {
 				response.setContentType("application/json");
 				out.println(getConfigurationJson(iss,request.getParameter("lms")));
 			} else {
-				out.println(Subject.header() + registrationForm(request,null) + Subject.footer);
+				out.println(Subject.header() + Subject.banner + registrationForm(request,null) + Subject.footer);
 			}
 		} catch (Exception e) {
 			response.sendError(401, e.getMessage()==null?e.toString():e.getMessage());
