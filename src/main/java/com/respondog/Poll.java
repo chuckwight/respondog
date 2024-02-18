@@ -1366,7 +1366,8 @@ public class Poll extends HttpServlet {
 			for (Map.Entry<String,PollTransaction> entry : ptsMap.entrySet()) {
 				i++;
 				PollTransaction pt = entry.getValue();
-				int scorePct = pt.compileScore(a.questionKeys)*100/pt.compilePossibleScore(a.questionKeys);
+				int possibleScore = pt.compilePossibleScore(a.questionKeys);
+				int scorePct = possibleScore>0?pt.compileScore(a.questionKeys)*100/possibleScore:0;
 				buf.append("<tr><td>" + i + ".&nbsp;</td>"
 						+ "<td>" + entry.getValue().nickname + "</td>"
 						+ "<td align=center> - </td>"

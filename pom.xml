@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.respondog</groupId>
   <artifactId>respondog</artifactId>
-  <version>20240205t0830</version>
+  <version>20240218t0730</version>
   <name>ResponDog</name>
   <description>ResponDog is an LTI app for creating audience response polls.</description>
   <parent>
@@ -125,8 +125,8 @@
         <artifactId>appengine-maven-plugin</artifactId>
         <version>2.4.4</version>
         <configuration>
-          <projectId>${googleCloudProjectId}</projectId>
-          <version>${project.version}</version>
+          <projectId>GCLOUD_CONFIG</projectId>
+          <version>GCLOUD_CONFIG</version>
         </configuration>
       </plugin>
       
