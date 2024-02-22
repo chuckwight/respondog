@@ -102,7 +102,7 @@ public class LTIRegistration extends HttpServlet {
 				response.setContentType("application/json");
 				out.println(getConfigurationJson(iss,request.getParameter("lms")));
 			} else {
-				out.println(Subject.header() + Subject.banner + registrationForm(request,null) + Subject.footer);
+				out.println(Subject.header() + registrationForm(request,null) + Subject.footer);
 			}
 		} catch (Exception e) {
 			response.sendError(401, e.getMessage()==null?e.toString():e.getMessage());
@@ -189,7 +189,7 @@ public class LTIRegistration extends HttpServlet {
 		buf.append("<main>"
 				+ "<h2>LTI Advantage " + (dynamic?"Dynamic ":"") + "Registration</h2>");
 		
-		buf.append("<form id=regform method=post action=/registration>"
+		buf.append("<form id=regform method=post action=/registration onsubmit=document.getElementById('submitbutton').disabled=true; >"
 				+ "Please complete the form below to create a trusted LTI Advantage connection between your LMS and ResponDog "
 				+ "that is convenient, secure and <a href=https://site.imsglobal.org/certifications/chemvantage/respondog>certified by 1EdTech</a>. "
 				+ "When you submit the form, ResponDog will send "
@@ -212,13 +212,13 @@ public class LTIRegistration extends HttpServlet {
 			buf.append("<input type=hidden name=openid_configuration value='" + openid_configuration + "' />");
 		} else {
 			buf.append("<fieldset style='width:400px'><legend>Type of Learning Management System:<br/></legend>\n"
-					+ "<label><input type=radio name=lms value=blackboard " + ((lms!=null && lms.equals("blackboard"))?"checked":"") + "  />Blackboard</label><br/>\n"
-					+ "<label><input type=radio name=lms value=brightspace " + ((lms!=null && lms.equals("brightspace"))?"checked":"") + "  />Brightspace</label><br/>\n"
-					+ "<label><input type=radio name=lms value=canvas " + ((lms!=null && lms.equals("canvas"))?"checked":"") + "  />Canvas</label><br/>\n"
-					+ "<label><input type=radio name=lms value=moodle " + ((lms!=null && lms.equals("moodle"))?"checked":"") + "  />Moodle</label><br/>\n"
-					+ "<label><input type=radio name=lms value=sakai " + ((lms!=null && lms.equals("sakai"))?"checked":"") + "  />Sakai</label><br/>\n"
-					+ "<label><input type=radio name=lms value=schoology " + ((lms!=null && lms.equals("schoology"))?"checked":"") + "  />Schoology</label><br/>\n"
-					+ "<label><input type=radio name=lms id=other value=other " + ((lms!=null && lms.equals("other"))?"checked":"") + "  />Other:</label>\n"
+					+ "<label><input type=radio required name=lms value=blackboard " + ((lms!=null && lms.equals("blackboard"))?"checked":"") + "  />Blackboard</label><br/>\n"
+					+ "<label><input type=radio required name=lms value=brightspace " + ((lms!=null && lms.equals("brightspace"))?"checked":"") + "  />Brightspace</label><br/>\n"
+					+ "<label><input type=radio required name=lms value=canvas " + ((lms!=null && lms.equals("canvas"))?"checked":"") + "  />Canvas</label><br/>\n"
+					+ "<label><input type=radio required name=lms value=moodle " + ((lms!=null && lms.equals("moodle"))?"checked":"") + "  />Moodle</label><br/>\n"
+					+ "<label><input type=radio required name=lms value=sakai " + ((lms!=null && lms.equals("sakai"))?"checked":"") + "  />Sakai</label><br/>\n"
+					+ "<label><input type=radio required name=lms value=schoology " + ((lms!=null && lms.equals("schoology"))?"checked":"") + "  />Schoology</label><br/>\n"
+					+ "<label><input type=radio required name=lms id=other value=other " + ((lms!=null && lms.equals("other"))?"checked":"") + "  />Other:</label>\n"
 					+ "<label><input type=text name=lms_other value='" + (lms_other==null?"":lms_other) + "' placeholder='(specify)' onFocus=document.getElementById('other').checked=true; /></label>\n"
 					+ "</fieldset>\n"
 					+ "<br/><br/>");
@@ -231,12 +231,12 @@ public class LTIRegistration extends HttpServlet {
 				+ "	<li>Poll participants are always free.</li>"
 				+ "  </ul>\n");
 		
-		buf.append("<label><input type=checkbox name=AcceptResponDogTOS value=true " + ((AcceptResponDogTOS!=null && AcceptResponDogTOS.equals("true"))?"checked":"")+ " />Accept the <a href=/about.html#terms target=_blank aria-label='opens new tab'>ResponDog Terms of Service</a></label><br/><br/>\n");
+		buf.append("<label><input type=checkbox required name=AcceptResponDogTOS value=true " + ((AcceptResponDogTOS!=null && AcceptResponDogTOS.equals("true"))?"checked":"")+ " />Accept the <a href=/about.html#terms target=_blank aria-label='opens new tab'>ResponDog Terms of Service</a></label><br/><br/>\n");
 		
 		buf.append("<div class='g-recaptcha' data-sitekey='" + Subject.getReCaptchaSiteKey() + "' aria-label='Google Recaptcha'></div><br/><br/>"
 				+ "<script type='text/javascript' src='https://www.google.com/recaptcha/api.js'> </script>\n");
 		
-		buf.append("<input type=submit value='Submit Registration'/>"
+		buf.append("<input id=submitbutton type=submit value='Submit Registration' />"
 				+ "</form><br/><br/>"
 				+ "</main>");
 		
